@@ -16,6 +16,7 @@ const USAGE_FETCH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const GREEN = "\x1b[32m";
 const YELLOW = "\x1b[33m";
 const RED = "\x1b[31m";
+const WHITE = "\x1b[37m";
 const DIM = "\x1b[2m";
 const RESET = "\x1b[0m";
 
@@ -78,8 +79,100 @@ function fetchUsage() {
   req.on("timeout", () => req.destroy());
 }
 
+// --- Launcher detection ---
+// Reads skillUsage from ~/.claude.json + launcher .md files to detect active project
+
+const HOME_DIR = (process.env.HOME || process.env.USERPROFILE || "").replace(/[\\/]+$/, "");
+const CLAUDE_JSON = path.join(HOME_DIR, ".claude.json");
+const COMMANDS_DIR = path.join(HOME_DIR, ".claude", "commands");
+
+let _launcherCache = { sessionId: null, projectName: null };
+
+function detectLauncherProject(data) {
+  const sessionId = data?.session_id ?? data?.data?.session_id;
+  if (!sessionId) return null;
+
+  // Return cached result for same session
+  if (_launcherCache.sessionId === sessionId) return _launcherCache.projectName;
+
+  let skillUsage;
+  try {
+    skillUsage = JSON.parse(fs.readFileSync(CLAUDE_JSON, "utf8")).skillUsage;
+  } catch {
+    return null;
+  }
+  if (!skillUsage) return null;
+
+  // Approximate session start time
+  const durationMs = data?.cost?.total_duration_ms
+    ?? data?.data?.cost?.total_duration_ms ?? 0;
+  const sessionStart = Date.now() - durationMs;
+
+  // Scan launcher command files for ones with ## Open
+  let best = null;
+  try {
+    const files = fs.readdirSync(COMMANDS_DIR);
+    for (const file of files) {
+      if (!file.endsWith(".md")) continue;
+      const name = file.slice(0, -3);
+      const usage = skillUsage[name];
+      if (!usage || !usage.lastUsedAt) continue;
+      // Only consider launchers used during this session
+      if (usage.lastUsedAt < sessionStart) continue;
+      // Only consider if more recent than current best
+      if (best && usage.lastUsedAt <= best.lastUsedAt) continue;
+
+      const content = fs.readFileSync(path.join(COMMANDS_DIR, file), "utf8");
+      const match = content.match(/## Open\s*\n.*?:\s*(.+)/);
+      if (!match) continue;
+
+      best = { lastUsedAt: usage.lastUsedAt, projectPath: match[1].trim() };
+    }
+  } catch {
+    // silent
+  }
+
+  let projectName = null;
+  if (best) {
+    projectName = best.projectPath.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || null;
+  }
+
+  _launcherCache = { sessionId, projectName };
+  return projectName;
+}
+
 // --- Segment functions ---
 // Each segment: (data) => { text, color } | null
+
+function directorySegment(data) {
+  // Prefer worktree branch when available
+  const worktree = data?.worktree?.branch
+    ?? data?.data?.worktree?.branch;
+  if (worktree) {
+    return { text: worktree, color: WHITE };
+  }
+
+  // Try project_dir first, then cwd
+  const dir = data?.workspace?.project_dir
+    ?? data?.data?.workspace?.project_dir
+    ?? data?.cwd
+    ?? data?.data?.cwd;
+
+  if (dir) {
+    const normalized = dir.replace(/[\\/]+$/, "");
+    // If it's a real project dir (not home), use its basename
+    if (!HOME_DIR || normalized.toLowerCase() !== HOME_DIR.toLowerCase()) {
+      const basename = normalized.split(/[\\/]/).pop();
+      if (basename) return { text: basename, color: WHITE };
+    }
+  }
+
+  // Home dir or no dir — detect project from launcher usage
+  const project = detectLauncherProject(data);
+  if (project) return { text: project, color: WHITE };
+
+  return null;
+}
 
 function contextSegment(data) {
   const pct = data?.context_window?.used_percentage
@@ -124,7 +217,7 @@ function weeklyUsageSegment() {
   return { text: `Weekly: ${stale}${rounded}%${resetLabel}`, color };
 }
 
-const SEGMENTS = [contextSegment, weeklyUsageSegment];
+const SEGMENTS = [directorySegment, contextSegment, weeklyUsageSegment];
 
 // --- stdin / cache helpers ---
 

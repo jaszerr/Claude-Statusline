@@ -18,8 +18,15 @@ Segments are joined with a dim ` | ` separator.
 
 ## Current Segments
 
-1. **Context** - Context window usage from stdin (`Context: 42%`)
-2. **Weekly Usage** - 7-day rolling usage from Anthropic OAuth API (`Weekly: 47% R:Thu`)
+1. **Directory** - Active project folder name (`Whisper v1`, `Jolly-CLI`, etc.)
+   - Priority: worktree branch > project_dir basename > launcher detection
+   - Launcher detection reads `skillUsage` from `~/.claude.json` + parses `## Open` path from `~/.claude/commands/*.md`
+   - Only shows launchers used during the current session (compares `lastUsedAt` vs session start)
+   - Hides when cwd is home dir and no launcher was used
+   - Cached per `session_id` to avoid repeated file reads
+   - Color: WHITE
+2. **Context** - Context window usage from stdin (`Context: 42%`)
+3. **Weekly Usage** - 7-day rolling usage from Anthropic OAuth API (`Weekly: 47% R:Thu`)
    - Fetched every 5 minutes via `https://api.anthropic.com/api/oauth/usage`
    - Requires `anthropic-beta: oauth-2025-04-20` header
    - Uses OAuth token from `~/.claude/.credentials.json`
@@ -40,9 +47,14 @@ Claude Code pipes JSON via stdin on each assistant message. Known fields:
 - `context_window.total_input_tokens` / `total_output_tokens` / `context_window_size`
 - `cost.total_cost_usd` - Session cost
 - `model.id` / `model.display_name` - Current model
-- `workspace.current_dir` / `workspace.project_dir`
-- `session_id`, `version`, `transcript_path`
-- `worktree.name` / `worktree.branch` (when in worktree)
+- `workspace.current_dir` / `workspace.project_dir` / `workspace.added_dirs`
+- `session_id`, `version`, `transcript_path`, `cwd`
+- `cost.total_cost_usd` / `cost.total_duration_ms` / `cost.total_api_duration_ms`
+- `cost.total_lines_added` / `cost.total_lines_removed`
+- `worktree.name` / `worktree.branch` / `worktree.path` (when in worktree)
+- `vim.mode` (when vim mode enabled)
+- `agent.name` (when using --agent flag)
+- `exceeds_200k_tokens` (boolean)
 
 ## OAuth Usage API Response
 
@@ -68,6 +80,7 @@ This endpoint is tightly rate-limited. Fetch sparingly (every 5 min). On 429, us
 | GREEN | `\x1b[32m` | Good / low values |
 | YELLOW | `\x1b[33m` | Warning / medium |
 | RED | `\x1b[31m` | Critical / high |
+| WHITE | `\x1b[37m` | Directory segment |
 | DIM | `\x1b[2m` | Separators, inactive |
 | RESET | `\x1b[0m` | Always close colors |
 
@@ -86,3 +99,4 @@ This endpoint is tightly rate-limited. Fetch sparingly (every 5 min). On 429, us
 - Wrapper: `C:\Users\jsrat\.claude\run-statusline.sh`
 - Config: `C:\Users\jsrat\.claude\settings.json` (statusLine key)
 - Caches: `cache.json` (stdin), `usage-cache.json` (API)
+- Competitive audit: `COMPETITIVE-AUDIT.md` (11 projects, feature inventory, priority tiers)
