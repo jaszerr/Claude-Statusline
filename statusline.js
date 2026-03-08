@@ -111,15 +111,10 @@ function weeklyUsageSegment() {
     const now = new Date();
     const diffMs = resetDate - now;
     if (diffMs > 0) {
-      const diffH = Math.floor(diffMs / 3600000);
-      const diffD = Math.floor(diffH / 24);
-      const remainH = diffH % 24;
       const dayName = resetDate.toLocaleDateString("en-US", { weekday: "short" });
-      if (diffD > 0) {
-        resetLabel = ` R:${dayName}`;
-      } else {
-        resetLabel = ` R:${remainH}h`;
-      }
+      const hour = resetDate.getHours();
+      const timeStr = hour === 0 ? "12AM" : hour < 12 ? `${hour}AM` : hour === 12 ? "12PM" : `${hour - 12}PM`;
+      resetLabel = ` R:${dayName} ${timeStr}`;
     }
   }
 
