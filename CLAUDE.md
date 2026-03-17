@@ -19,11 +19,10 @@ Segments are joined with a dim ` | ` separator.
 ## Current Segments
 
 1. **Directory** - Active project folder name (`Whisper v1`, `Jolly-CLI`, etc.)
-   - Priority: worktree branch > project_dir basename > launcher detection
-   - Launcher detection reads `skillUsage` from `~/.claude.json` + parses `## Open` path from `~/.claude/commands/*.md`
-   - Only shows launchers used during the current session (compares `lastUsedAt` vs session start)
-   - Hides when cwd is home dir and no launcher was used
-   - Cached per `session_id` to avoid repeated file reads
+   - Priority: worktree branch > project_dir > current_dir > cwd (first non-home wins) > launcher detection
+   - Launcher detection uses "closest to session start" heuristic (not most recent)
+   - Per-session cache files (`.launcher-{session_id}`) prevent cross-tab contamination
+   - Old session cache files auto-cleaned after 24h
    - Color: WHITE
 2. **Context** - Context window usage from stdin (`Context: 42%`)
 3. **Weekly Usage** - 7-day rolling usage from Anthropic OAuth API (`Weekly: 47% R:Thu`)
@@ -89,8 +88,9 @@ This endpoint is tightly rate-limited. Fetch sparingly (every 5 min). On 429, us
 - Zero npm dependencies. Always.
 - Single file (`statusline.js`). No build step.
 - Must respond in <100ms (stdin timeout is 100ms).
-- Cache last known value to `cache.json` for empty-stdin fallback.
-- Usage API data cached to `usage-cache.json` (fetched every 5 min).
+- No shared stdin cache between sessions (removed `cache.json`).
+- Launcher detection cached per session in `.launcher-{session_id}` files (auto-cleaned after 24h).
+- Usage API data cached to `usage-cache.json` (fetched every 5 min, global/shared is fine).
 - Bash wrapper lives at `~/.claude/run-statusline.sh` (avoids spaces in path).
 
 ## File Locations
@@ -98,5 +98,5 @@ This endpoint is tightly rate-limited. Fetch sparingly (every 5 min). On 429, us
 - Script: `E:\Claude Code\TOOLS\Claude-Statusline\statusline.js`
 - Wrapper: `C:\Users\jsrat\.claude\run-statusline.sh`
 - Config: `C:\Users\jsrat\.claude\settings.json` (statusLine key)
-- Caches: `cache.json` (stdin), `usage-cache.json` (API)
+- Cache: `usage-cache.json` (API only)
 - Competitive audit: `COMPETITIVE-AUDIT.md` (11 projects, feature inventory, priority tiers)

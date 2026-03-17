@@ -5,7 +5,6 @@ const fs = require("fs");
 const path = require("path");
 const https = require("https");
 
-const CACHE_FILE = path.join(__dirname, "cache.json");
 const USAGE_CACHE_FILE = path.join(__dirname, "usage-cache.json");
 const CREDS_FILE = path.join(process.env.HOME || process.env.USERPROFILE, ".claude", ".credentials.json");
 
@@ -79,65 +78,72 @@ function fetchUsage() {
   req.on("timeout", () => req.destroy());
 }
 
-// --- Launcher detection ---
-// Reads skillUsage from ~/.claude.json + launcher .md files to detect active project
-
 const HOME_DIR = (process.env.HOME || process.env.USERPROFILE || "").replace(/[\\/]+$/, "");
 const CLAUDE_JSON = path.join(HOME_DIR, ".claude.json");
 const COMMANDS_DIR = path.join(HOME_DIR, ".claude", "commands");
 
-let _launcherCache = { sessionId: null, projectName: null };
+// --- Launcher detection (session-isolated) ---
 
 function detectLauncherProject(data) {
   const sessionId = data?.session_id ?? data?.data?.session_id;
   if (!sessionId) return null;
 
-  // Return cached result for same session
-  if (_launcherCache.sessionId === sessionId) return _launcherCache.projectName;
-
-  let skillUsage;
+  // Per-session cache file — prevents cross-tab contamination
+  const cacheFile = path.join(__dirname, `.launcher-${sessionId}`);
   try {
-    skillUsage = JSON.parse(fs.readFileSync(CLAUDE_JSON, "utf8")).skillUsage;
+    return fs.readFileSync(cacheFile, "utf8") || null;
   } catch {
-    return null;
+    // First detection for this session
   }
-  if (!skillUsage) return null;
 
-  // Approximate session start time
+  // Estimate session start time
   const durationMs = data?.cost?.total_duration_ms
     ?? data?.data?.cost?.total_duration_ms ?? 0;
   const sessionStart = Date.now() - durationMs;
 
-  // Scan launcher command files for ones with ## Open
-  let best = null;
+  let skillUsage;
   try {
-    const files = fs.readdirSync(COMMANDS_DIR);
-    for (const file of files) {
-      if (!file.endsWith(".md")) continue;
-      const name = file.slice(0, -3);
-      const usage = skillUsage[name];
-      if (!usage || !usage.lastUsedAt) continue;
-      // Only consider launchers used during this session
-      if (usage.lastUsedAt < sessionStart) continue;
-      // Only consider if more recent than current best
-      if (best && usage.lastUsedAt <= best.lastUsedAt) continue;
-
-      const content = fs.readFileSync(path.join(COMMANDS_DIR, file), "utf8");
-      const match = content.match(/## Open\s*\n.*?:\s*(.+)/);
-      if (!match) continue;
-
-      best = { lastUsedAt: usage.lastUsedAt, projectPath: match[1].trim() };
-    }
-  } catch {
-    // silent
-  }
+    skillUsage = JSON.parse(fs.readFileSync(CLAUDE_JSON, "utf8")).skillUsage;
+  } catch { /* silent */ }
 
   let projectName = null;
-  if (best) {
-    projectName = best.projectPath.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || null;
+
+  if (skillUsage) {
+    // Find launcher whose lastUsedAt is CLOSEST to this session's start time
+    // (not most recent — that would pick up other tabs' launchers)
+    let bestDelta = Infinity;
+    try {
+      for (const file of fs.readdirSync(COMMANDS_DIR)) {
+        if (!file.endsWith(".md")) continue;
+        const usage = skillUsage[file.slice(0, -3)];
+        if (!usage?.lastUsedAt) continue;
+        // Only consider launchers used within 5 min of session start
+        const delta = Math.abs(usage.lastUsedAt - sessionStart);
+        if (delta > 300000 || delta >= bestDelta) continue;
+        const content = fs.readFileSync(path.join(COMMANDS_DIR, file), "utf8");
+        const match = content.match(/## Open\s*\n.*?:\s*(.+)/);
+        if (!match) continue;
+        bestDelta = delta;
+        projectName = match[1].trim().replace(/[\\/]+$/, "").split(/[\\/]/).pop() || null;
+      }
+    } catch { /* silent */ }
   }
 
-  _launcherCache = { sessionId, projectName };
+  // Only cache positive results — null means "not yet detected", retry next render
+  if (projectName) {
+    try { fs.writeFileSync(cacheFile, projectName); } catch {}
+  }
+
+  // Cleanup session cache files older than 24h
+  try {
+    const cutoff = Date.now() - 86400000;
+    for (const f of fs.readdirSync(__dirname)) {
+      if (!f.startsWith(".launcher-")) continue;
+      const fp = path.join(__dirname, f);
+      if (fs.statSync(fp).mtimeMs < cutoff) fs.unlinkSync(fp);
+    }
+  } catch { /* silent */ }
+
   return projectName;
 }
 
@@ -152,22 +158,22 @@ function directorySegment(data) {
     return { text: worktree, color: WHITE };
   }
 
-  // Try project_dir first, then cwd
-  const dir = data?.workspace?.project_dir
-    ?? data?.data?.workspace?.project_dir
-    ?? data?.cwd
-    ?? data?.data?.cwd;
+  // Check project_dir, current_dir, and cwd — use first non-home directory
+  const candidates = [
+    data?.workspace?.project_dir ?? data?.data?.workspace?.project_dir,
+    data?.workspace?.current_dir ?? data?.data?.workspace?.current_dir,
+    data?.cwd ?? data?.data?.cwd,
+  ];
 
-  if (dir) {
+  for (const dir of candidates) {
+    if (!dir) continue;
     const normalized = dir.replace(/[\\/]+$/, "");
-    // If it's a real project dir (not home), use its basename
-    if (!HOME_DIR || normalized.toLowerCase() !== HOME_DIR.toLowerCase()) {
-      const basename = normalized.split(/[\\/]/).pop();
-      if (basename) return { text: basename, color: WHITE };
-    }
+    if (HOME_DIR && normalized.toLowerCase() === HOME_DIR.toLowerCase()) continue;
+    const basename = normalized.split(/[\\/]/).pop();
+    if (basename) return { text: basename, color: WHITE };
   }
 
-  // Home dir or no dir — detect project from launcher usage
+  // Home dir — detect project from launcher usage (session-isolated)
   const project = detectLauncherProject(data);
   if (project) return { text: project, color: WHITE };
 
@@ -219,7 +225,7 @@ function weeklyUsageSegment() {
 
 const SEGMENTS = [directorySegment, contextSegment, weeklyUsageSegment];
 
-// --- stdin / cache helpers ---
+// --- stdin helper ---
 
 function readStdin(timeoutMs = 100) {
   return new Promise((resolve) => {
@@ -244,22 +250,6 @@ function readStdin(timeoutMs = 100) {
   });
 }
 
-function readCache() {
-  try {
-    return JSON.parse(fs.readFileSync(CACHE_FILE, "utf8"));
-  } catch {
-    return null;
-  }
-}
-
-function writeCache(data) {
-  try {
-    fs.writeFileSync(CACHE_FILE, JSON.stringify(data));
-  } catch {
-    // silent - cache is optional
-  }
-}
-
 // --- main ---
 
 async function main() {
@@ -275,21 +265,14 @@ async function main() {
     try {
       data = JSON.parse(raw);
     } catch {
-      // malformed JSON - fall through to cache
+      // malformed JSON
     }
-  }
-
-  if (!data) {
-    data = readCache();
   }
 
   if (!data) {
     process.stdout.write(`${DIM}Context: --%${RESET}`);
     return;
   }
-
-  // Cache on new data (only when we got fresh stdin)
-  if (raw) writeCache(data);
 
   // Build output from segments
   const parts = [];
