@@ -91,12 +91,20 @@ This endpoint is tightly rate-limited. Fetch sparingly (every 5 min). On 429, us
 - No shared stdin cache between sessions (removed `cache.json`).
 - Launcher detection cached per session in `.launcher-{session_id}` files (auto-cleaned after 24h).
 - Usage API data cached to `usage-cache.json` (fetched every 5 min, global/shared is fine).
-- Bash wrapper lives at `~/.claude/run-statusline.sh` (avoids spaces in path).
+
+## Installation / Deployment
+
+This project folder is the **source of truth**. To install or update on any PC:
+
+1. Copy `statusline.js` to `~/.claude/statusline.js`
+2. Ensure `settings.json` has: `"statusLine": { "type": "command", "command": "node ~/.claude/statusline.js" }`
+
+No wrapper script needed. No hardcoded paths. Works on any machine with Node.js and Claude Code.
 
 ## File Locations
 
-- Script: `E:\Claude Code\TOOLS\Claude-Statusline\statusline.js`
-- Wrapper: `C:\Users\jsrat\.claude\run-statusline.sh`
-- Config: `C:\Users\jsrat\.claude\settings.json` (statusLine key)
-- Cache: `usage-cache.json` (API only)
+- Source (development): `statusline.js` (this project folder)
+- Installed copy: `~/.claude/statusline.js`
+- Config: `~/.claude/settings.json` (statusLine key)
+- Cache: `usage-cache.json` (API only, in project dir on installed copy's dir)
 - Competitive audit: `COMPETITIVE-AUDIT.md` (11 projects, feature inventory, priority tiers)

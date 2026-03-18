@@ -1,31 +1,24 @@
-# Resume Point (March 17, 2026)
+# Resume Point (March 18, 2026)
 
 ## What happened
-Fixed multi-tab project name contamination in the Directory segment. When 5-10 Claude Code sessions ran simultaneously, launching a new project in one tab would overwrite the project name shown in all other tabs.
-
-## Root causes found (3 bugs)
-1. **Shared `cache.json`** - Single file written/read by all sessions. One tab's cached stdin data leaked to others on stdin timeout.
-2. **Global launcher detection** - Read `~/.claude.json` `skillUsage` (shared across all sessions) and picked the MOST RECENT launcher, which grabbed other tabs' launchers.
-3. **`project_dir` masked `cwd`** - The `??` chain picked `project_dir` (always home dir for launcher sessions) over `cwd` (actual project dir), forcing unnecessary launcher detection.
+Made statusline portable across PCs. Previously, installation required hardcoded paths (`E:/Claude Code/...`, `C:/Users/jsrat/...`) and a bash wrapper script, which broke on other machines.
 
 ## What was fixed
-- Removed shared `cache.json` entirely (no cross-session stdin leakage)
-- Rewrote launcher detection: "closest to session start" heuristic instead of "most recent"
-- Per-session cache files (`.launcher-{session_id}`) so detection result is locked per tab
-- Only cache positive results (first render happens before launcher runs, must not lock in null)
-- Added `workspace.current_dir` as additional candidate in directory resolution
-- `.gitignore` updated: removed `cache.json`, added `.launcher-*`
+- Removed the `run-statusline.sh` wrapper script from the workflow
+- `statusline.js` now gets copied directly to `~/.claude/statusline.js`
+- `settings.json` updated to: `"command": "node ~/.claude/statusline.js"` (no hardcoded paths)
+- CLAUDE.md updated with new Installation/Deployment section
+- Saved install workflow to global memory so future sessions on any PC know the process
 
 ## Decisions
-- **Kept launcher detection** (can't remove it -- `workspace.project_dir` and `cwd` both stay as home dir even after launcher's `## Open` changes the working directory)
-- **Removed shared stdin cache** (acceptable trade-off: brief "Context: --%" on rare stdin timeouts vs cross-tab data leakage)
-- **"Closest to session start" heuristic** chosen over "most recent" because it correctly identifies which launcher belongs to which session when multiple tabs exist
+- **Project folder = source of truth** for development. `~/.claude/` = installed copy. User explicitly requested this workflow.
+- **No wrapper script needed** since `node ~/.claude/statusline.js` works directly (the `~` path avoids spaces-in-path issues that originally motivated the wrapper)
 
 ## Status
-- User confirmed "looks like working well" but wants to test more across multiple tabs
-- If the heuristic fails (e.g., two launchers fired within seconds), may need to explore transcript-based detection as fallback
+- Working on this PC with new portable config
+- User still wants to validate on the other PC
 
 ## Next session should
-- Check if the user reported any issues with the fix
-- If issues persist, consider reading the session transcript (first few lines) to detect which launcher was used (more reliable than skillUsage timing)
-- Consider whether `total_duration_ms` accurately reflects wall-clock session age (affects sessionStart estimation)
+- If on a different PC, copy `statusline.js` to `~/.claude/` and set up `settings.json`
+- Check if multi-tab project name fix (from March 17) is still working well
+- Consider whether `usage-cache.json` path needs adjustment (currently uses `__dirname`, which will be `~/.claude/` after install -- mixing cache with config dir)
