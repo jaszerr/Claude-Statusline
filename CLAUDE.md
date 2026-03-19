@@ -20,8 +20,9 @@ Segments are joined with a dim ` | ` separator.
 
 1. **Directory** - Active project folder name (`Whisper v1`, `Jolly-CLI`, etc.)
    - Priority: worktree branch > project_dir > current_dir > cwd (first non-home wins) > launcher detection
-   - Launcher detection uses "closest to session start" heuristic (not most recent)
-   - Per-session cache files (`.launcher-{session_id}`) prevent cross-tab contamination
+   - Launcher detection uses "closest to session start" heuristic (60s window, not most recent)
+   - Per-session cache files (`.launcher-{session_id}`) with negative caching prevent cross-tab contamination
+   - 5-second warm-up delay before launcher detection (lets `## Open` update workspace fields first)
    - Old session cache files auto-cleaned after 24h
    - Color: WHITE
 2. **Context** - Context window usage from stdin (`Context: 42%`)
@@ -96,10 +97,16 @@ This endpoint is tightly rate-limited. Fetch sparingly (every 5 min). On 429, us
 
 This project folder is the **source of truth**. To install or update on any PC:
 
+```
+node install.js
+```
+
+This copies `statusline.js` to `~/.claude/` and sets up `settings.json` automatically.
+Cross-platform (Windows + Mac). Restart Claude Code after running.
+
+Manual alternative:
 1. Copy `statusline.js` to `~/.claude/statusline.js`
 2. Ensure `settings.json` has: `"statusLine": { "type": "command", "command": "node ~/.claude/statusline.js" }`
-
-No wrapper script needed. No hardcoded paths. Works on any machine with Node.js and Claude Code.
 
 ## File Locations
 

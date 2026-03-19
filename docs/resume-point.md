@@ -1,24 +1,19 @@
-# Resume Point (March 18, 2026)
+# Resume Point (March 19, 2026)
 
 ## What happened
-Made statusline portable across PCs. Previously, installation required hardcoded paths (`E:/Claude Code/...`, `C:/Users/jsrat/...`) and a bash wrapper script, which broke on other machines.
+Fixed directory segment leaking across tabs and added cross-platform install script.
 
 ## What was fixed
-- Removed the `run-statusline.sh` wrapper script from the workflow
-- `statusline.js` now gets copied directly to `~/.claude/statusline.js`
-- `settings.json` updated to: `"command": "node ~/.claude/statusline.js"` (no hardcoded paths)
-- CLAUDE.md updated with new Installation/Deployment section
-- Saved install workflow to global memory so future sessions on any PC know the process
-
-## Decisions
-- **Project folder = source of truth** for development. `~/.claude/` = installed copy. User explicitly requested this workflow.
-- **No wrapper script needed** since `node ~/.claude/statusline.js` works directly (the `~` path avoids spaces-in-path issues that originally motivated the wrapper)
+- **Directory leaking**: Three root causes addressed in `detectLauncherProject`:
+  1. No negative caching -- sessions without launchers kept re-probing every render, eventually picking up another tab's launcher. Now caches `__none__` on first detection.
+  2. 5-minute detection window was too wide -- two tabs starting within 5 min contaminated each other. Tightened to 60 seconds.
+  3. No warm-up period -- first render ran before `## Open` updated `workspace.current_dir`, causing premature detection with wrong results. Now skips detection until session is 5+ seconds old.
+- **Install script**: Created `install.js` -- copies `statusline.js` to `~/.claude/` and updates `settings.json`. Works on Windows + Mac. Run `node install.js` on any new PC.
 
 ## Status
-- Working on this PC with new portable config
-- User still wants to validate on the other PC
+- Fix deployed on office PC via `node install.js`
+- Restart Claude Code to apply
 
 ## Next session should
-- If on a different PC, copy `statusline.js` to `~/.claude/` and set up `settings.json`
-- Check if multi-tab project name fix (from March 17) is still working well
-- Consider whether `usage-cache.json` path needs adjustment (currently uses `__dirname`, which will be `~/.claude/` after install -- mixing cache with config dir)
+- Validate multi-tab behavior: open 2+ tabs with different launchers, confirm correct project names
+- Test plain session (no launcher) -- should show nothing, not leak another tab's project

@@ -89,16 +89,21 @@ function detectLauncherProject(data) {
   if (!sessionId) return null;
 
   // Per-session cache file — prevents cross-tab contamination
+  const NONE = "__none__";
   const cacheFile = path.join(__dirname, `.launcher-${sessionId}`);
   try {
-    return fs.readFileSync(cacheFile, "utf8") || null;
+    const cached = fs.readFileSync(cacheFile, "utf8");
+    return cached === NONE ? null : (cached || null);
   } catch {
     // First detection for this session
   }
 
-  // Estimate session start time
+  // Skip detection during warm-up — workspace fields haven't stabilized yet
+  // (## Open hasn't updated current_dir, so we'd incorrectly fall through here)
   const durationMs = data?.cost?.total_duration_ms
     ?? data?.data?.cost?.total_duration_ms ?? 0;
+  if (durationMs < 5000) return null; // retry on next render
+
   const sessionStart = Date.now() - durationMs;
 
   let skillUsage;
@@ -117,9 +122,9 @@ function detectLauncherProject(data) {
         if (!file.endsWith(".md")) continue;
         const usage = skillUsage[file.slice(0, -3)];
         if (!usage?.lastUsedAt) continue;
-        // Only consider launchers used within 5 min of session start
+        // Tight 60s window — prevents cross-tab contamination from nearby sessions
         const delta = Math.abs(usage.lastUsedAt - sessionStart);
-        if (delta > 300000 || delta >= bestDelta) continue;
+        if (delta > 60000 || delta >= bestDelta) continue;
         const content = fs.readFileSync(path.join(COMMANDS_DIR, file), "utf8");
         const match = content.match(/## Open\s*\n.*?:\s*(.+)/);
         if (!match) continue;
@@ -129,10 +134,8 @@ function detectLauncherProject(data) {
     } catch { /* silent */ }
   }
 
-  // Only cache positive results — null means "not yet detected", retry next render
-  if (projectName) {
-    try { fs.writeFileSync(cacheFile, projectName); } catch {}
-  }
+  // Always cache result (including null) — prevents repeated detection attempts
+  try { fs.writeFileSync(cacheFile, projectName || NONE); } catch {}
 
   // Cleanup session cache files older than 24h
   try {
