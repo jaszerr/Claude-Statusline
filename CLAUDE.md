@@ -20,9 +20,8 @@ Segments are joined with a dim ` | ` separator.
 
 1. **Directory** - Active project folder name (`Whisper v1`, `Jolly-CLI`, etc.)
    - Priority: worktree branch > project_dir > current_dir > cwd (first non-home wins) > launcher detection
-   - Launcher detection uses "closest to session start" heuristic (60s window, not most recent)
-   - Per-session cache files (`.launcher-{session_id}`) with negative caching prevent cross-tab contamination
-   - 5-second warm-up delay before launcher detection (lets `## Open` update workspace fields first)
+   - Launcher detection reads session transcript to find `<command-name>` (authoritative, no timing heuristics)
+   - Per-session cache files (`.launcher-{session_id}`) with negative caching prevent re-reading
    - Old session cache files auto-cleaned after 24h
    - Color: WHITE
 2. **Context** - Context window usage from stdin (`Context: 42%`)
@@ -90,8 +89,9 @@ This endpoint is tightly rate-limited. Fetch sparingly (every 5 min). On 429, us
 - Single file (`statusline.js`). No build step.
 - Must respond in <100ms (stdin timeout is 100ms).
 - No shared stdin cache between sessions (removed `cache.json`).
-- Launcher detection cached per session in `.launcher-{session_id}` files (auto-cleaned after 24h).
+- Launcher detection reads transcript file (first 4KB), not `skillUsage` timestamps. Cached per session in `.launcher-{session_id}` files (auto-cleaned after 24h).
 - Usage API data cached to `usage-cache.json` (fetched every 5 min, global/shared is fine).
+- `workspace.*` and `cwd` from stdin always report home directory regardless of launcher `## Open`. Directory segment relies on transcript-based launcher detection as primary mechanism.
 
 ## Installation / Deployment
 

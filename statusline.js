@@ -79,65 +79,59 @@ function fetchUsage() {
 }
 
 const HOME_DIR = (process.env.HOME || process.env.USERPROFILE || "").replace(/[\\/]+$/, "");
-const CLAUDE_JSON = path.join(HOME_DIR, ".claude.json");
 const COMMANDS_DIR = path.join(HOME_DIR, ".claude", "commands");
 
-// --- Launcher detection (session-isolated) ---
+// --- Launcher detection (transcript-based, session-isolated) ---
 
 function detectLauncherProject(data) {
   const sessionId = data?.session_id ?? data?.data?.session_id;
   if (!sessionId) return null;
 
-  // Per-session cache file — prevents cross-tab contamination
   const NONE = "__none__";
   const cacheFile = path.join(__dirname, `.launcher-${sessionId}`);
+
+  // Return cached result
   try {
     const cached = fs.readFileSync(cacheFile, "utf8");
     return cached === NONE ? null : (cached || null);
   } catch {
-    // First detection for this session
+    // Not yet cached
   }
 
-  // Skip detection during warm-up — workspace fields haven't stabilized yet
-  // (## Open hasn't updated current_dir, so we'd incorrectly fall through here)
-  const durationMs = data?.cost?.total_duration_ms
-    ?? data?.data?.cost?.total_duration_ms ?? 0;
-  if (durationMs < 5000) return null; // retry on next render
-
-  const sessionStart = Date.now() - durationMs;
-
-  let skillUsage;
-  try {
-    skillUsage = JSON.parse(fs.readFileSync(CLAUDE_JSON, "utf8")).skillUsage;
-  } catch { /* silent */ }
-
+  // Read this session's transcript to find the actual launcher command used
+  const transcriptPath = data?.transcript_path ?? data?.data?.transcript_path;
   let projectName = null;
 
-  if (skillUsage) {
-    // Find launcher whose lastUsedAt is CLOSEST to this session's start time
-    // (not most recent — that would pick up other tabs' launchers)
-    let bestDelta = Infinity;
+  if (transcriptPath) {
     try {
-      for (const file of fs.readdirSync(COMMANDS_DIR)) {
-        if (!file.endsWith(".md")) continue;
-        const usage = skillUsage[file.slice(0, -3)];
-        if (!usage?.lastUsedAt) continue;
-        // Tight 60s window — prevents cross-tab contamination from nearby sessions
-        const delta = Math.abs(usage.lastUsedAt - sessionStart);
-        if (delta > 60000 || delta >= bestDelta) continue;
-        const content = fs.readFileSync(path.join(COMMANDS_DIR, file), "utf8");
-        const match = content.match(/## Open\s*\n.*?:\s*(.+)/);
-        if (!match) continue;
-        bestDelta = delta;
-        projectName = match[1].trim().replace(/[\\/]+$/, "").split(/[\\/]/).pop() || null;
+      // Read first 4KB -- launcher command is always near the start
+      const fd = fs.openSync(transcriptPath, "r");
+      const buf = Buffer.alloc(4096);
+      const bytesRead = fs.readSync(fd, buf, 0, 4096, 0);
+      fs.closeSync(fd);
+      const head = buf.toString("utf8", 0, bytesRead);
+
+      // Find <command-name>/xxx</command-name> in the transcript
+      const cmdMatch = head.match(/<command-name>\/([^<]+)<\/command-name>/);
+      if (cmdMatch) {
+        const cmdName = cmdMatch[1];
+        // Look up the command file's ## Open path
+        const cmdFile = path.join(COMMANDS_DIR, cmdName + ".md");
+        try {
+          const content = fs.readFileSync(cmdFile, "utf8");
+          const openMatch = content.match(/## Open\s*\n.*?:\s*(.+)/);
+          if (openMatch) {
+            projectName = openMatch[1].trim().replace(/[\\/]+$/, "").split(/[\\/]/).pop() || null;
+          }
+        } catch { /* command file not found */ }
       }
-    } catch { /* silent */ }
+    } catch { /* transcript not readable yet */ }
   }
 
-  // Always cache result (including null) — prevents repeated detection attempts
+  // Cache result (including null) -- transcript is immutable so result won't change
   try { fs.writeFileSync(cacheFile, projectName || NONE); } catch {}
 
-  // Cleanup session cache files older than 24h
+  // Cleanup stale session cache files (>24h)
   try {
     const cutoff = Date.now() - 86400000;
     for (const f of fs.readdirSync(__dirname)) {
