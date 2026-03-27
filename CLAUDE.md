@@ -18,19 +18,24 @@ Segments are joined with a dim ` | ` separator.
 
 ## Current Segments
 
-1. **Directory** - Active project folder name (`Whisper v1`, `Jolly-CLI`, etc.)
-   - Priority: worktree branch > project_dir > current_dir > cwd (first non-home wins) > launcher detection
-   - Launcher detection reads session transcript to find `<command-name>` (authoritative, no timing heuristics)
-   - Per-session cache files (`.launcher-{session_id}`) with negative caching prevent re-reading
-   - Old session cache files auto-cleaned after 24h
-   - Color: WHITE
-2. **Context** - Context window usage from stdin (`Context: 42%`)
-3. **Weekly Usage** - 7-day rolling usage from Anthropic OAuth API (`Weekly: 47% R:Thu`)
+1. **Context** - Context window usage from stdin (`Context: 42%`)
+2. **Weekly Usage** - 7-day rolling usage from Anthropic OAuth API (`Weekly: 47% R:Thu 8AM`)
    - Fetched every 5 minutes via `https://api.anthropic.com/api/oauth/usage`
    - Requires `anthropic-beta: oauth-2025-04-20` header
    - Uses OAuth token from `~/.claude/.credentials.json`
    - Shows `~` prefix when data is stale (>10 min old)
-   - Shows reset day/hours (e.g., `R:Thu` or `R:5h`)
+   - Shows reset day/time (e.g., `R:Thu 8AM`)
+3. **Session Usage** - 5-hour rolling usage from same API (`5hr: 14% R:3h12m`)
+   - Uses `five_hour.utilization` and `five_hour.resets_at` from the usage API
+   - Shows remaining time until reset (e.g., `R:3h12m` or `R:45m`)
+   - Same stale indicator and color thresholds as weekly
+
+## Deep Context
+
+| File | Purpose | Load When |
+|------|---------|-----------|
+| `docs/resume-point.md` | Session state, next actions | Session start |
+| `COMPETITIVE-AUDIT.md` | 11 projects, feature inventory, priority tiers | Planning new features |
 
 ## Adding a New Segment
 
@@ -79,7 +84,6 @@ This endpoint is tightly rate-limited. Fetch sparingly (every 5 min). On 429, us
 | GREEN | `\x1b[32m` | Good / low values |
 | YELLOW | `\x1b[33m` | Warning / medium |
 | RED | `\x1b[31m` | Critical / high |
-| WHITE | `\x1b[37m` | Directory segment |
 | DIM | `\x1b[2m` | Separators, inactive |
 | RESET | `\x1b[0m` | Always close colors |
 
@@ -89,9 +93,7 @@ This endpoint is tightly rate-limited. Fetch sparingly (every 5 min). On 429, us
 - Single file (`statusline.js`). No build step.
 - Must respond in <100ms (stdin timeout is 100ms).
 - No shared stdin cache between sessions (removed `cache.json`).
-- Launcher detection reads transcript file (first 4KB), not `skillUsage` timestamps. Cached per session in `.launcher-{session_id}` files (auto-cleaned after 24h).
 - Usage API data cached to `usage-cache.json` (fetched every 5 min, global/shared is fine).
-- `workspace.*` and `cwd` from stdin always report home directory regardless of launcher `## Open`. Directory segment relies on transcript-based launcher detection as primary mechanism.
 
 ## Installation / Deployment
 

@@ -15,7 +15,6 @@ const USAGE_FETCH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const GREEN = "\x1b[32m";
 const YELLOW = "\x1b[33m";
 const RED = "\x1b[31m";
-const WHITE = "\x1b[37m";
 const DIM = "\x1b[2m";
 const RESET = "\x1b[0m";
 
@@ -78,104 +77,8 @@ function fetchUsage() {
   req.on("timeout", () => req.destroy());
 }
 
-const HOME_DIR = (process.env.HOME || process.env.USERPROFILE || "").replace(/[\\/]+$/, "");
-const COMMANDS_DIR = path.join(HOME_DIR, ".claude", "commands");
-
-// --- Launcher detection (transcript-based, session-isolated) ---
-
-function detectLauncherProject(data) {
-  const sessionId = data?.session_id ?? data?.data?.session_id;
-  if (!sessionId) return null;
-
-  const NONE = "__none__";
-  const cacheFile = path.join(__dirname, `.launcher-${sessionId}`);
-
-  // Return cached result
-  try {
-    const cached = fs.readFileSync(cacheFile, "utf8");
-    return cached === NONE ? null : (cached || null);
-  } catch {
-    // Not yet cached
-  }
-
-  // Read this session's transcript to find the actual launcher command used
-  const transcriptPath = data?.transcript_path ?? data?.data?.transcript_path;
-  let projectName = null;
-
-  if (transcriptPath) {
-    try {
-      // Read first 4KB -- launcher command is always near the start
-      const fd = fs.openSync(transcriptPath, "r");
-      const buf = Buffer.alloc(4096);
-      const bytesRead = fs.readSync(fd, buf, 0, 4096, 0);
-      fs.closeSync(fd);
-      const head = buf.toString("utf8", 0, bytesRead);
-
-      // Find <command-name>/xxx</command-name> in the transcript
-      const cmdMatch = head.match(/<command-name>\/([^<]+)<\/command-name>/);
-      if (cmdMatch) {
-        const cmdName = cmdMatch[1];
-        // Look up the command file's ## Open path
-        const cmdFile = path.join(COMMANDS_DIR, cmdName + ".md");
-        try {
-          const content = fs.readFileSync(cmdFile, "utf8");
-          const openMatch = content.match(/## Open\s*\n.*?:\s*(.+)/);
-          if (openMatch) {
-            projectName = openMatch[1].trim().replace(/[\\/]+$/, "").split(/[\\/]/).pop() || null;
-          }
-        } catch { /* command file not found */ }
-      }
-    } catch { /* transcript not readable yet */ }
-  }
-
-  // Cache result (including null) -- transcript is immutable so result won't change
-  try { fs.writeFileSync(cacheFile, projectName || NONE); } catch {}
-
-  // Cleanup stale session cache files (>24h)
-  try {
-    const cutoff = Date.now() - 86400000;
-    for (const f of fs.readdirSync(__dirname)) {
-      if (!f.startsWith(".launcher-")) continue;
-      const fp = path.join(__dirname, f);
-      if (fs.statSync(fp).mtimeMs < cutoff) fs.unlinkSync(fp);
-    }
-  } catch { /* silent */ }
-
-  return projectName;
-}
-
 // --- Segment functions ---
 // Each segment: (data) => { text, color } | null
-
-function directorySegment(data) {
-  // Prefer worktree branch when available
-  const worktree = data?.worktree?.branch
-    ?? data?.data?.worktree?.branch;
-  if (worktree) {
-    return { text: worktree, color: WHITE };
-  }
-
-  // Check project_dir, current_dir, and cwd — use first non-home directory
-  const candidates = [
-    data?.workspace?.project_dir ?? data?.data?.workspace?.project_dir,
-    data?.workspace?.current_dir ?? data?.data?.workspace?.current_dir,
-    data?.cwd ?? data?.data?.cwd,
-  ];
-
-  for (const dir of candidates) {
-    if (!dir) continue;
-    const normalized = dir.replace(/[\\/]+$/, "");
-    if (HOME_DIR && normalized.toLowerCase() === HOME_DIR.toLowerCase()) continue;
-    const basename = normalized.split(/[\\/]/).pop();
-    if (basename) return { text: basename, color: WHITE };
-  }
-
-  // Home dir — detect project from launcher usage (session-isolated)
-  const project = detectLauncherProject(data);
-  if (project) return { text: project, color: WHITE };
-
-  return null;
-}
 
 function contextSegment(data) {
   const pct = data?.context_window?.used_percentage
@@ -220,7 +123,36 @@ function weeklyUsageSegment() {
   return { text: `Weekly: ${stale}${rounded}%${resetLabel}`, color };
 }
 
-const SEGMENTS = [directorySegment, contextSegment, weeklyUsageSegment];
+function sessionUsageSegment() {
+  const usage = readUsageCache();
+  if (!usage) return null;
+
+  const session = usage.five_hour?.utilization;
+  if (session == null) return null;
+
+  const rounded = Math.round(session);
+  const color = rounded < 50 ? GREEN : rounded < 75 ? YELLOW : RED;
+
+  // Calculate reset time remaining
+  let resetLabel = "";
+  const resetAt = usage.five_hour?.resets_at;
+  if (resetAt) {
+    const diffMs = new Date(resetAt) - new Date();
+    if (diffMs > 0) {
+      const totalMin = Math.floor(diffMs / 60000);
+      const hrs = Math.floor(totalMin / 60);
+      const mins = totalMin % 60;
+      resetLabel = hrs > 0 ? ` R:${hrs}h${mins}m` : ` R:${mins}m`;
+    }
+  }
+
+  // Stale indicator
+  const stale = usage._fetchedAt && (Date.now() - usage._fetchedAt > 10 * 60 * 1000) ? "~" : "";
+
+  return { text: `5hr: ${stale}${rounded}%${resetLabel}`, color };
+}
+
+const SEGMENTS = [contextSegment, weeklyUsageSegment, sessionUsageSegment];
 
 // --- stdin helper ---
 
