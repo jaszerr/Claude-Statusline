@@ -110,6 +110,15 @@ Manual alternative:
 1. Copy `statusline.js` to `~/.claude/statusline.js`
 2. Ensure `settings.json` has: `"statusLine": { "type": "command", "command": "node ~/.claude/statusline.js" }`
 
+## Session Start Checklist
+
+On every session start, automatically read these files (if they exist):
+1. `docs/wiki/_index.md` -- compiled project knowledge
+2. `docs/wiki/_questions.md` -- surface unresolved questions to user
+3. `docs/resume-point.md` (or `CURRENT-STATUS.md` or `workspace/current-session.md`) -- resume where last session left off
+4. `docs/operations/action-log.md` -- pending items
+5. `docs/operations/active-threads.md` -- ongoing decisions
+
 ## File Locations
 
 - Source (development): `statusline.js` (this project folder)
