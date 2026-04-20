@@ -1,22 +1,29 @@
 # Resume Point (April 20, 2026)
 
 ## What happened
-Two small UX additions to `statusline.js`:
-1. **5hr segment** now shows local clock time of reset alongside countdown: `5hr: 0% R:4h45m (7:30PM)` — user wanted to see wall-clock end time, not just duration remaining.
-2. **New `modelEffortSegment`** shows current model + reasoning effort at end of line: `Opus 4.7:xhigh` (rendered dim). Model parsed from stdin `model.id`; effort read fresh from `~/.claude/settings.json` → `effortLevel` on every render, so mid-session `/model` or effort changes reflect automatically.
+Fixed the Model+Effort segment so it reflects the **live** effort level instead of getting stuck on the launch-time default.
 
-Installed copy at `~/.claude/statusline.js` updated via `node install.js`. User confirmed clock math is correct (2:45 PM + 4h45m = 7:30 PM).
+**Bug**: Statusline showed `Opus 4.7:low` even after running `/effort max` — the segment was reading `~/.claude/settings.json` → `effortLevel`, which Claude Code does NOT update when `/effort` runs (it's session-scoped, kept in-memory only).
+
+**Fix**: Added `readEffortFromTranscript()` in `statusline.js`. It tail-scans the last 64KB of the transcript (`transcript_path` from stdin) for `Set effort level to <level>` — the string the `/effort` skill echoes whenever it runs. Latest match wins. Falls back to `settings.json.effortLevel` if no marker present.
 
 ## Current state
-- `statusline.js`: 4 segments — Context, Weekly, 5hr, Model+Effort
-- CLAUDE.md updated to document new segment behaviors
-- Source and installed copy in sync
-- Layout example: `Context: 42% | Weekly: 47% R:Thu 8AM | 5hr: 14% R:3h12m (7:30PM) | Opus 4.7:xhigh`
+- `statusline.js`: 4 segments unchanged (Context, Weekly, 5hr, Model+Effort)
+- `modelEffortSegment` now calls `readEffortFromTranscript(data?.transcript_path)` first, then falls back to `settings.json`
+- CLAUDE.md + wiki (`segments.md`, `settings-integration.md`) updated to document the new detection path
+- Source and installed copy in sync (`node install.js`)
 
 ## Key decisions this session
-- Effort lives in `~/.claude/settings.json` as `effortLevel` (not in stdin JSON). Reading fresh on each status render is the simplest way to pick up mid-session changes — no caching, and the file read is trivial (<1ms).
-- Used DIM color for model+effort since it's static identification info, not a metric — shouldn't compete visually with the usage percentages.
-- Model name parsed from `model.id` regex (`claude-opus-4-7` → `Opus 4.7`) with fallback to `display_name`. Cleaner than `display_name` which often includes extra text like "(1M context)".
+- **Transcript tail-scan over hooks**: considered a UserPromptSubmit hook to capture `/effort <level>` invocations, but `/effort` can be interactive (empty args) so the hook would miss cases. Transcript contains the skill's echoed `Set effort level to <X>` regardless of how it was invoked — single source of truth.
+- **64KB tail window**: big enough to always contain the latest `/effort` in practice, small enough to stay well under the 100ms budget. Uses `fs.readSync` with explicit position to read only the tail, not the whole transcript.
+- **Fallback chain**: transcript marker → settings.json → nothing. Never crashes, never shows stale data silently — if transcript is unavailable the settings value is clearly the launch default.
+- **Investigation path**: dumped `data` from stdin to confirm Claude Code does NOT pipe effort in stdin (no `effort`/`thinking`/`budget` field). Confirmed `/effort` writes nothing to `settings.json` or `sessions/*.json`. Only trace is in the transcript.
+
+## Learnings / gotchas
+- `/effort <level>` is session-scoped and in-memory only. Don't trust `settings.json.effortLevel` for live state.
+- The skill reliably echoes `Set effort level to <level>` into the transcript — stable marker to regex for.
+- Bash `echo '... JSON ...' | node statusline.js` on Windows git-bash doesn't reliably pipe stdin within the 100ms window; use `< file.json` redirect for manual tests, or isolate logic into a pure function for unit testing.
+- `stdin.transcript_path` uses Windows backslashes — works fine with `fs.openSync` on Node for Windows.
 
 ## To update a second PC
 ```
@@ -25,6 +32,6 @@ git pull && node install.js
 Then restart Claude Code.
 
 ## Next session should
-- Consider adding cost segment (`cost.total_cost_usd` available in stdin)
+- Consider adding cost segment (`cost.total_cost_usd` in stdin)
 - Consider showing `vim.mode` when enabled
-- Verify Model+Effort segment renders correctly if `effortLevel` is absent from settings.json (should gracefully show just model name)
+- If `/effort` skill output format ever changes, update the regex in `readEffortFromTranscript`

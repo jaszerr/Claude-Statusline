@@ -29,11 +29,15 @@ Rendered left-to-right, joined by `DIM | RESET`.
 - **Colors**: <50% green, <75% yellow, else red
 
 ## 4. Model + Effort (`modelEffortSegment`)
-- **Source**: stdin `model.id` (regex-parsed) + `~/.claude/settings.json` → `effortLevel`
-- **Output**: `Opus 4.7:xhigh` (just `Opus 4.7` if `effortLevel` unset)
+- **Source**: stdin `model.id` (regex-parsed) + effort detection (transcript → settings fallback)
+- **Output**: `Opus 4.7:max` (just `Opus 4.7` if no effort resolved)
 - **Color**: DIM — this is identification, not a metric; shouldn't compete with usage numbers
 - **Model parsing**: regex `/claude-(opus|sonnet|haiku)-(\d+)-(\d+)/i` → `Opus 4.7`. Falls back to `model.display_name` if id doesn't match.
-- **Why settings.json each render**: Claude Code re-runs statusline on every assistant message. Reading `settings.json` fresh means `/model` switches and effort-level changes reflect immediately without a restart or cache-bust.
+- **Effort detection** (`readEffortFromTranscript`):
+  1. Tail-scan the last 64KB of `transcript_path` (from stdin) for `Set effort level to <level>` — this is emitted by the `/effort` skill whenever it runs. Latest match wins.
+  2. Fallback: `~/.claude/settings.json` → `effortLevel` (the launch-time default).
+  3. If neither yields a value, show just the model name.
+- **Why transcript-first**: `/effort <level>` is session-scoped and is NOT written to `settings.json`, so reading settings alone would show a stale launch value for the entire session. The transcript is the only place the live value leaks out.
 
 ## Join behavior
 Any segment returning `null` is skipped silently. If *all* segments return null, statusline falls back to `Context: --%` in DIM.

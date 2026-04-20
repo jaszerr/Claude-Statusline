@@ -29,9 +29,9 @@ Segments are joined with a dim ` | ` separator.
    - Uses `five_hour.utilization` and `five_hour.resets_at` from the usage API
    - Shows remaining time + local clock time of reset
    - Same stale indicator and color thresholds as weekly
-4. **Model + Effort** - Current model and reasoning effort (`Opus 4.7:xhigh`)
+4. **Model + Effort** - Current model and reasoning effort (`Opus 4.7:max`)
    - Model parsed from stdin `model.id` (e.g. `claude-opus-4-7` → `Opus 4.7`)
-   - Effort read fresh from `~/.claude/settings.json` `effortLevel` each run, so mid-session changes are reflected
+   - Effort: tail-scans the transcript (`transcript_path` from stdin) for the last `Set effort level to <level>` marker emitted by the `/effort` skill. Falls back to `~/.claude/settings.json` `effortLevel` if no marker found. This reflects mid-session `/effort` changes, which are session-scoped and never written to settings.json.
 
 ## Deep Context
 

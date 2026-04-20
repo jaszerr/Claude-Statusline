@@ -161,6 +161,32 @@ function sessionUsageSegment() {
   return { text: `5hr: ${stale}${rounded}%${resetLabel}`, color };
 }
 
+function readEffortFromTranscript(transcriptPath) {
+  // /effort is session-scoped — Claude Code doesn't expose the live value
+  // anywhere except the transcript, where the skill echoes
+  // "Set effort level to <level>". Tail-scan for the last match.
+  if (!transcriptPath) return null;
+  try {
+    const fd = fs.openSync(transcriptPath, "r");
+    try {
+      const size = fs.fstatSync(fd).size;
+      const readBytes = Math.min(size, 64 * 1024);
+      const buf = Buffer.alloc(readBytes);
+      fs.readSync(fd, buf, 0, readBytes, size - readBytes);
+      const text = buf.toString("utf8");
+      const matches = text.match(/Set effort level to ([a-zA-Z]+)/g);
+      if (matches && matches.length) {
+        return matches[matches.length - 1].split(" ").pop();
+      }
+    } finally {
+      fs.closeSync(fd);
+    }
+  } catch {
+    // transcript missing or unreadable
+  }
+  return null;
+}
+
 function modelEffortSegment(data) {
   const modelId = data?.model?.id;
   const displayName = data?.model?.display_name;
@@ -176,17 +202,19 @@ function modelEffortSegment(data) {
   if (!modelName && displayName) modelName = displayName;
   if (!modelName) return null;
 
-  let effort = null;
-  try {
-    const settingsPath = path.join(
-      process.env.HOME || process.env.USERPROFILE,
-      ".claude",
-      "settings.json"
-    );
-    const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
-    effort = settings.effortLevel;
-  } catch {
-    // settings not readable, skip effort
+  let effort = readEffortFromTranscript(data?.transcript_path);
+  if (!effort) {
+    try {
+      const settingsPath = path.join(
+        process.env.HOME || process.env.USERPROFILE,
+        ".claude",
+        "settings.json"
+      );
+      const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+      effort = settings.effortLevel;
+    } catch {
+      // settings not readable, skip effort
+    }
   }
 
   const text = effort ? `${modelName}:${effort}` : modelName;
