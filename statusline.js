@@ -133,16 +133,25 @@ function sessionUsageSegment() {
   const rounded = Math.round(session);
   const color = rounded < 50 ? GREEN : rounded < 75 ? YELLOW : RED;
 
-  // Calculate reset time remaining
+  // Calculate reset time remaining + local clock time
   let resetLabel = "";
   const resetAt = usage.five_hour?.resets_at;
   if (resetAt) {
-    const diffMs = new Date(resetAt) - new Date();
+    const resetDate = new Date(resetAt);
+    const diffMs = resetDate - new Date();
     if (diffMs > 0) {
       const totalMin = Math.floor(diffMs / 60000);
       const hrs = Math.floor(totalMin / 60);
       const mins = totalMin % 60;
-      resetLabel = hrs > 0 ? ` R:${hrs}h${mins}m` : ` R:${mins}m`;
+      const remaining = hrs > 0 ? `${hrs}h${mins}m` : `${mins}m`;
+
+      const h = resetDate.getHours();
+      const m = resetDate.getMinutes();
+      const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+      const ampm = h < 12 ? "AM" : "PM";
+      const clock = `${hour12}:${String(m).padStart(2, "0")}${ampm}`;
+
+      resetLabel = ` R:${remaining} (${clock})`;
     }
   }
 
@@ -152,7 +161,39 @@ function sessionUsageSegment() {
   return { text: `5hr: ${stale}${rounded}%${resetLabel}`, color };
 }
 
-const SEGMENTS = [contextSegment, weeklyUsageSegment, sessionUsageSegment];
+function modelEffortSegment(data) {
+  const modelId = data?.model?.id;
+  const displayName = data?.model?.display_name;
+
+  let modelName = null;
+  if (modelId) {
+    const m = modelId.match(/claude-(opus|sonnet|haiku)-(\d+)-(\d+)/i);
+    if (m) {
+      const family = m[1][0].toUpperCase() + m[1].slice(1);
+      modelName = `${family} ${m[2]}.${m[3]}`;
+    }
+  }
+  if (!modelName && displayName) modelName = displayName;
+  if (!modelName) return null;
+
+  let effort = null;
+  try {
+    const settingsPath = path.join(
+      process.env.HOME || process.env.USERPROFILE,
+      ".claude",
+      "settings.json"
+    );
+    const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+    effort = settings.effortLevel;
+  } catch {
+    // settings not readable, skip effort
+  }
+
+  const text = effort ? `${modelName}:${effort}` : modelName;
+  return { text, color: DIM };
+}
+
+const SEGMENTS = [contextSegment, weeklyUsageSegment, sessionUsageSegment, modelEffortSegment];
 
 // --- stdin helper ---
 

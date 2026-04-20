@@ -25,10 +25,13 @@ Segments are joined with a dim ` | ` separator.
    - Uses OAuth token from `~/.claude/.credentials.json`
    - Shows `~` prefix when data is stale (>10 min old)
    - Shows reset day/time (e.g., `R:Thu 8AM`)
-3. **Session Usage** - 5-hour rolling usage from same API (`5hr: 14% R:3h12m`)
+3. **Session Usage** - 5-hour rolling usage from same API (`5hr: 14% R:3h12m (7:30PM)`)
    - Uses `five_hour.utilization` and `five_hour.resets_at` from the usage API
-   - Shows remaining time until reset (e.g., `R:3h12m` or `R:45m`)
+   - Shows remaining time + local clock time of reset
    - Same stale indicator and color thresholds as weekly
+4. **Model + Effort** - Current model and reasoning effort (`Opus 4.7:xhigh`)
+   - Model parsed from stdin `model.id` (e.g. `claude-opus-4-7` → `Opus 4.7`)
+   - Effort read fresh from `~/.claude/settings.json` `effortLevel` each run, so mid-session changes are reflected
 
 ## Deep Context
 
