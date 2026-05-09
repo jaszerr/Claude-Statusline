@@ -1,37 +1,31 @@
-# Resume Point (April 20, 2026)
+# Resume Point (May 9, 2026)
 
 ## What happened
-Fixed the Model+Effort segment so it reflects the **live** effort level instead of getting stuck on the launch-time default.
+Patched `statusline.js` to read OAuth credentials from the **macOS Keychain** when the file `~/.claude/.credentials.json` is missing. On a fresh Mac install, Weekly + 5hr segments were silently dropping out because Claude Code on macOS stores creds in the login keychain (service `Claude Code-credentials`), not on disk.
 
-**Bug**: Statusline showed `Opus 4.7:low` even after running `/effort max` — the segment was reading `~/.claude/settings.json` → `effortLevel`, which Claude Code does NOT update when `/effort` runs (it's session-scoped, kept in-memory only).
+## Fix
+- Added `getOAuthToken()` in `statusline.js`. Order: file → macOS Keychain via `security find-generic-password -s "Claude Code-credentials" -w` → null.
+- `fetchUsage()` now calls `getOAuthToken()` instead of reading the file directly.
+- Synchronous `execFileSync`, 2s timeout, stderr suppressed (avoids stray prompts in stdout).
+- First keychain hit may pop a permission dialog; subsequent calls are silent after "Always Allow".
 
-**Fix**: Added `readEffortFromTranscript()` in `statusline.js`. It tail-scans the last 64KB of the transcript (`transcript_path` from stdin) for `Set effort level to <level>` — the string the `/effort` skill echoes whenever it runs. Latest match wins. Falls back to `settings.json.effortLevel` if no marker present.
+## Verified
+- `node statusline.js` with empty cache fetched fresh data and wrote `usage-cache.json` — no prompt (already authorized).
+- All 4 segments rendered cleanly: `Context: 35% | Weekly: 5% R:Sat 3PM | 5hr: 3% R:4h37m (2:00AM) | Opus 4.7:xhigh`.
+- Source + installed copy in sync via `node install.js`.
 
-## Current state
-- `statusline.js`: 4 segments unchanged (Context, Weekly, 5hr, Model+Effort)
-- `modelEffortSegment` now calls `readEffortFromTranscript(data?.transcript_path)` first, then falls back to `settings.json`
-- CLAUDE.md + wiki (`segments.md`, `settings-integration.md`) updated to document the new detection path
-- Source and installed copy in sync (`node install.js`)
+## Updated docs
+- `CLAUDE.md` — Weekly Usage segment now mentions keychain fallback
+- `docs/wiki/usage-api.md` — new "Credential lookup" section with both code paths
+- This resume-point
 
-## Key decisions this session
-- **Transcript tail-scan over hooks**: considered a UserPromptSubmit hook to capture `/effort <level>` invocations, but `/effort` can be interactive (empty args) so the hook would miss cases. Transcript contains the skill's echoed `Set effort level to <X>` regardless of how it was invoked — single source of truth.
-- **64KB tail window**: big enough to always contain the latest `/effort` in practice, small enough to stay well under the 100ms budget. Uses `fs.readSync` with explicit position to read only the tail, not the whole transcript.
-- **Fallback chain**: transcript marker → settings.json → nothing. Never crashes, never shows stale data silently — if transcript is unavailable the settings value is clearly the launch default.
-- **Investigation path**: dumped `data` from stdin to confirm Claude Code does NOT pipe effort in stdin (no `effort`/`thinking`/`budget` field). Confirmed `/effort` writes nothing to `settings.json` or `sessions/*.json`. Only trace is in the transcript.
-
-## Learnings / gotchas
-- `/effort <level>` is session-scoped and in-memory only. Don't trust `settings.json.effortLevel` for live state.
-- The skill reliably echoes `Set effort level to <level>` into the transcript — stable marker to regex for.
-- Bash `echo '... JSON ...' | node statusline.js` on Windows git-bash doesn't reliably pipe stdin within the 100ms window; use `< file.json` redirect for manual tests, or isolate logic into a pure function for unit testing.
-- `stdin.transcript_path` uses Windows backslashes — works fine with `fs.openSync` on Node for Windows.
-
-## To update a second PC
-```
-git pull && node install.js
-```
-Then restart Claude Code.
+## Cross-platform notes
+- **Windows**: `~/.claude/.credentials.json` exists, file path used. Unchanged.
+- **macOS**: file does NOT exist by default. Keychain fallback kicks in.
+- **Linux**: not tested but file path should work; if Linux Claude Code ever moves to libsecret, add a third branch.
 
 ## Next session should
-- Consider adding cost segment (`cost.total_cost_usd` in stdin)
+- Consider adding cost segment (`cost.total_cost_usd` in stdin) — still on the list from April
 - Consider showing `vim.mode` when enabled
 - If `/effort` skill output format ever changes, update the regex in `readEffortFromTranscript`
+- If user complains about a Mac keychain permission popup on a different Mac, document the "Always Allow" step

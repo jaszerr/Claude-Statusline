@@ -1,8 +1,8 @@
 ---
 title: "OAuth Usage API"
 date_created: 2026-04-20
-date_modified: 2026-04-20
-summary: "Anthropic usage endpoint, cache strategy, rate-limit handling"
+date_modified: 2026-05-09 (macOS keychain fallback)
+summary: "Anthropic usage endpoint, cache strategy, rate-limit handling, credential lookup"
 type: article
 ---
 
@@ -15,7 +15,17 @@ Authorization: Bearer <oauth token>
 anthropic-beta: oauth-2025-04-20
 ```
 
-Token is read from `~/.claude/.credentials.json` → `claudeAiOauth.accessToken`.
+## Credential lookup (`getOAuthToken()`)
+The token is platform-specific:
+
+1. **File first** — `~/.claude/.credentials.json` → `claudeAiOauth.accessToken`. Used on Windows + Linux, and on any Mac that still has the legacy file.
+2. **macOS Keychain fallback** — Claude Code on macOS stores creds in the login keychain under service `Claude Code-credentials`, not on disk. We shell out to:
+   ```
+   security find-generic-password -s "Claude Code-credentials" -w
+   ```
+   The output is the same JSON shape as the file. Synchronous `execFileSync` with a 2s timeout, stderr suppressed.
+
+Both paths return `null` on failure; callers (e.g. `fetchUsage`) bail out silently. First-ever keychain access may pop a permission dialog — once the user clicks "Always Allow," subsequent calls are silent.
 
 ## Response shape
 ```json

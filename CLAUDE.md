@@ -22,7 +22,7 @@ Segments are joined with a dim ` | ` separator.
 2. **Weekly Usage** - 7-day rolling usage from Anthropic OAuth API (`Weekly: 47% R:Thu 8AM`)
    - Fetched every 5 minutes via `https://api.anthropic.com/api/oauth/usage`
    - Requires `anthropic-beta: oauth-2025-04-20` header
-   - Uses OAuth token from `~/.claude/.credentials.json`
+   - OAuth token via `getOAuthToken()`: tries `~/.claude/.credentials.json` first (Windows/Linux), then macOS Keychain `security find-generic-password -s "Claude Code-credentials" -w`. Mac CC stores creds in keychain, not on disk.
    - Shows `~` prefix when data is stale (>10 min old)
    - Shows reset day/time (e.g., `R:Thu 8AM`)
 3. **Session Usage** - 5-hour rolling usage from same API (`5hr: 14% R:3h12m (7:30PM)`)

@@ -1,2 +1,5 @@
 usage-cache.json
 .launcher-*
+# macOS resource-fork metadata (created on non-HFS volumes like exFAT T7)
+._*
+.DS_Store

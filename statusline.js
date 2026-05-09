@@ -4,9 +4,11 @@
 const fs = require("fs");
 const path = require("path");
 const https = require("https");
+const { execFileSync } = require("child_process");
 
 const USAGE_CACHE_FILE = path.join(__dirname, "usage-cache.json");
 const CREDS_FILE = path.join(process.env.HOME || process.env.USERPROFILE, ".claude", ".credentials.json");
+const KEYCHAIN_SERVICE = "Claude Code-credentials";
 
 // How often to call the usage API (ms)
 const USAGE_FETCH_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -42,14 +44,36 @@ function shouldFetchUsage() {
   return Date.now() - cached._fetchedAt > USAGE_FETCH_INTERVAL;
 }
 
-function fetchUsage() {
-  let token;
+function getOAuthToken() {
+  // 1. File-based credentials (Windows/Linux, also any Mac with the legacy file)
   try {
     const creds = JSON.parse(fs.readFileSync(CREDS_FILE, "utf8"));
-    token = creds.claudeAiOauth?.accessToken;
+    const token = creds.claudeAiOauth?.accessToken;
+    if (token) return token;
   } catch {
-    return; // no credentials, skip silently
+    // file missing or unreadable, fall through
   }
+
+  // 2. macOS Keychain fallback (Claude Code on macOS stores creds here, not on disk)
+  if (process.platform === "darwin") {
+    try {
+      const json = execFileSync(
+        "security",
+        ["find-generic-password", "-s", KEYCHAIN_SERVICE, "-w"],
+        { encoding: "utf8", timeout: 2000, stdio: ["ignore", "pipe", "ignore"] }
+      ).trim();
+      const creds = JSON.parse(json);
+      return creds.claudeAiOauth?.accessToken || null;
+    } catch {
+      // keychain access denied / item missing
+    }
+  }
+
+  return null;
+}
+
+function fetchUsage() {
+  const token = getOAuthToken();
   if (!token) return;
 
   const req = https.get("https://api.anthropic.com/api/oauth/usage", {
