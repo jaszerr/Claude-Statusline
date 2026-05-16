@@ -1,7 +1,7 @@
 ---
 title: "Segments"
 date_created: 2026-04-20
-date_modified: 2026-04-20
+date_modified: 2026-05-16
 summary: "Every segment in the status line: inputs, output format, color rules"
 type: article
 ---
@@ -38,6 +38,24 @@ Rendered left-to-right, joined by `DIM | RESET`.
   2. Fallback: `~/.claude/settings.json` → `effortLevel` (the launch-time default).
   3. If neither yields a value, show just the model name.
 - **Why transcript-first**: `/effort <level>` is session-scoped and is NOT written to `settings.json`, so reading settings alone would show a stale launch value for the entire session. The transcript is the only place the live value leaks out.
+
+## 5. Cost (`costSegment`)
+- **Source**: stdin `cost.total_cost_usd`
+- **Output**: `$0.154` (3 decimals when < $1, 2 decimals at $1+)
+- **Colors**: <$1 green, <$5 yellow, ≥$5 red
+- Hidden when stdin lacks `cost.total_cost_usd`
+- No `Cost:` prefix — `$` already signals the meaning, and the status bar is real estate
+
+## 6. Vim Mode (`vimModeSegment`)
+- **Source**: stdin `vim.mode` (Claude Code only populates this when vim mode is enabled)
+- **Output**: uppercased mode name (`NORMAL`, `INSERT`, `VISUAL`, `VISUAL-LINE`, `VISUAL-BLOCK`, `REPLACE`, `COMMAND`)
+- **Colors**:
+  - `NORMAL`: DIM (default resting state — shouldn't pull the eye)
+  - `INSERT`: GREEN (you're typing)
+  - `VISUAL` / `VISUAL-LINE` / `VISUAL-BLOCK` / `COMMAND`: YELLOW (selection / command-line — heads up)
+  - `REPLACE`: RED (destructive overwrite — strongest warning)
+  - Unknown mode value: falls back to DIM with the raw uppercased string
+- Hidden when `vim.mode` is absent
 
 ## Join behavior
 Any segment returning `null` is skipped silently. If *all* segments return null, statusline falls back to `Context: --%` in DIM.

@@ -32,6 +32,13 @@ Segments are joined with a dim ` | ` separator.
 4. **Model + Effort** - Current model and reasoning effort (`Opus 4.7:max`)
    - Model parsed from stdin `model.id` (e.g. `claude-opus-4-7` → `Opus 4.7`)
    - Effort: tail-scans the transcript (`transcript_path` from stdin) for the last `Set effort level to <level>` marker emitted by the `/effort` skill. Falls back to `~/.claude/settings.json` `effortLevel` if no marker found. This reflects mid-session `/effort` changes, which are session-scoped and never written to settings.json.
+5. **Cost** - Session cost from stdin `cost.total_cost_usd` (`$0.154`)
+   - 3 decimals under $1, 2 decimals at $1+
+   - Green < $1, yellow < $5, red ≥ $5
+   - Hidden when `cost.total_cost_usd` is absent
+6. **Vim Mode** - Current vim mode from stdin `vim.mode` (`INSERT`)
+   - Only shown when vim mode is enabled
+   - NORMAL: dim · INSERT: green · VISUAL/COMMAND: yellow · REPLACE: red
 
 ## Deep Context
 

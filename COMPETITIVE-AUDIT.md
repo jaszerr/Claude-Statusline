@@ -32,8 +32,8 @@ Legend: **HAVE** = we already have it | **NEW** = potential addition
 | Weekly (7-day) usage % | **HAVE** | Pulse, CCStatusline, oh-my-claude |
 | Reset countdown timer | **HAVE** (day+time) | Most projects |
 | Stale data indicator (~) | **HAVE** | Pulse |
-| 5-hour block usage % | NEW | Powerline, CCStatusline, oh-my-claude |
-| Session cost (USD) | NEW | Powerline, cc-statusline, spences10, levz0r, Mohamed3on gist |
+| 5-hour block usage % | **HAVE** | Powerline, CCStatusline, oh-my-claude |
+| Session cost (USD) | **HAVE** | Powerline, cc-statusline, spences10, levz0r, Mohamed3on gist |
 | Token count (input/output) | NEW | Most projects |
 | Hourly burn rate ($/hr or tokens/min) | NEW | cc-statusline, rz1989s, Powerline |
 | Daily/monthly cost aggregation | NEW | Powerline, rz1989s |
@@ -47,12 +47,14 @@ Legend: **HAVE** = we already have it | **NEW** = potential addition
 
 | Feature | Status | Seen In |
 |---------|--------|---------|
-| Model name/ID | NEW | Most projects |
+| Model name/ID | **HAVE** | Most projects |
 | Model tier icon (Opus/Sonnet/Haiku) | NEW | levz0r, Mohamed3on gist |
 | Session duration timer | NEW | Mohamed3on gist, cc-statusline |
 | Claude Code version | NEW | cc-statusline, Powerline |
 | Session name (/rename) | NEW | CCStatusline |
 | Output style indicator | NEW | CCometixLine |
+| Vim mode indicator | **HAVE** | (not seen in surveyed projects) |
+| Reasoning effort level | **HAVE** | (not seen in surveyed projects) |
 
 ### Display: Git Integration
 
@@ -129,9 +131,9 @@ Legend: **HAVE** = we already have it | **NEW** = potential addition
 ## Priority Tiers (Suggested)
 
 ### Tier 1: High value, low effort
-- **5-hour block usage %** (already in API response, just not displayed)
-- **Session cost** (available in stdin data)
-- **Model name** (available in stdin data)
+- ~~**5-hour block usage %**~~ — shipped Apr/May 2026
+- ~~**Session cost**~~ — shipped 2026-05-16
+- ~~**Model name**~~ — shipped (combined with effort level)
 - **Token count** (available in stdin data)
 
 ### Tier 2: Medium value, medium effort

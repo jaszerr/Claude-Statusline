@@ -1,7 +1,7 @@
 ---
 title: "Claude-Statusline Wiki Index"
 date_created: 2026-04-20
-date_modified: 2026-05-09 (macOS keychain credential fallback)
+date_modified: 2026-05-16 (cost + vim mode segments)
 summary: "Compiled knowledge for the Claude-Statusline project"
 type: index
 ---

@@ -245,7 +245,34 @@ function modelEffortSegment(data) {
   return { text, color: DIM };
 }
 
-const SEGMENTS = [contextSegment, weeklyUsageSegment, sessionUsageSegment, modelEffortSegment];
+function costSegment(data) {
+  const cost = data?.cost?.total_cost_usd;
+  if (cost == null) return null;
+
+  const formatted = cost >= 1 ? cost.toFixed(2) : cost.toFixed(3);
+  const color = cost < 1 ? GREEN : cost < 5 ? YELLOW : RED;
+  return { text: `$${formatted}`, color };
+}
+
+function vimModeSegment(data) {
+  const mode = data?.vim?.mode;
+  if (!mode) return null;
+
+  const upper = String(mode).toUpperCase();
+  const colorMap = {
+    NORMAL: DIM,
+    INSERT: GREEN,
+    VISUAL: YELLOW,
+    "VISUAL-LINE": YELLOW,
+    "VISUAL-BLOCK": YELLOW,
+    REPLACE: RED,
+    COMMAND: YELLOW,
+  };
+  const color = colorMap[upper] || DIM;
+  return { text: upper, color };
+}
+
+const SEGMENTS = [contextSegment, weeklyUsageSegment, sessionUsageSegment, modelEffortSegment, costSegment, vimModeSegment];
 
 // --- stdin helper ---
 
