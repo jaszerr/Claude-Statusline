@@ -1,0 +1,13 @@
+# Decisions Log
+
+## 2026-07-19 Sunday 20:57:49 +05:30 - Fable weekly segment + model/effort overhaul (Claude-Statusline session)
+
+**Fable weekly segment reads the new `limits` array, not the old per-model fields.** The usage API (2026-07 shape) added `limits[]`; the model-scoped weekly entry is `kind: "weekly_scoped"` with `scope.model.display_name: "Fable"`. The old `seven_day_opus` / `seven_day_sonnet` top-level fields are all null now. Label comes from the API so it adapts if the scoped model changes. Segment hides when `limits` is absent (old cache format).
+
+**No reset label on the Fable segment** (user decision): it shares the weekly reset already shown in the Weekly segment, so `Fable: 9%` only. The rounding helper (resets_at comes back as 09:59:59.64 for a 10:00 boundary; round to nearest minute) was written, then removed with the label; documented in [[usage-api]] since any future reset display needs it.
+
+**Model regex widened instead of display_name-first.** `claude-fable-5` failed the old `(opus|sonnet|haiku)-(\d+)-(\d+)` regex and only rendered via `display_name` luck. New: `/claude-([a-z]+)-(\d+)(?:-(\d{1,2})(?!\d))?/i` - any family, optional minor, `(?!\d)` keeps 8-digit date suffixes out of the minor slot. `display_name` stays as fallback. Rejected alternative: preferring `display_name` outright (would tie output format to Claude Code's naming whims).
+
+**Effort transcript scan retargeted to the real marker.** Audit (Claude + Codex independently) proved the old `Set effort level to <level>` marker never appears in any transcript on this machine - the /effort skill is retired; effort changes go through /model, which writes `<local-command-stdout>Set model to ... with <level> effort` AND saves `effortLevel` to settings.json. New regex requires the JSONL-structural leading quote before `<local-command-stdout>` so quoted copies of the marker in chat/tool output can't poison the scan (this session's own transcript contains such copies and correctly doesn't match). Tail widened 64KB -> 256KB (runtime still ~45ms). Accepted limitation: a mid-session effort change older than 256KB of transcript falls back to settings - usually still correct because /model writes settings too; only wrong if another session changed the default afterward.
+
+**Codex delegation incident:** first run silently executed a stale 2-day-old instructions file because the Write tool resolves `/tmp` to `<cwd-drive>:/tmp` (E:/tmp) while Git Bash's `/tmp` is a different MSYS directory. Fix: always pass absolute Windows paths for `@file` dispatch. Filed to CC-Wiki `tools/claude-codex.md` and `~/.claude/lessons/codex.md`.

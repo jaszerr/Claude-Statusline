@@ -1,31 +1,26 @@
-# Resume Point (May 9, 2026)
+# Resume Point
+
+## 2026-07-19 Sunday 20:57:49 +05:30 - Fable weekly segment + model/effort overhaul
 
 ## What happened
-Patched `statusline.js` to read OAuth credentials from the **macOS Keychain** when the file `~/.claude/.credentials.json` is missing. On a fresh Mac install, Weekly + 5hr segments were silently dropping out because Claude Code on macOS stores creds in the login keychain (service `Claude Code-credentials`), not on disk.
+1. **New segment**: Fable weekly usage (`Fable: 9%`), between 5hr and Model+Effort. Reads the usage API's new `limits[]` array (`kind: "weekly_scoped"`, model scope); label from `scope.model.display_name`. No reset label (user decision - same reset as Weekly). Hides gracefully on old-format caches.
+2. **Model+Effort audit** (user request, run by Claude + Codex independently): segment showed the right thing but only via fallback paths. Both fixes then applied on user's "apply":
+   - Model regex widened: any family, one- or two-part version, date suffixes ignored (`claude-fable-5` -> `Fable 5` directly; before, only display_name luck).
+   - Effort scan retargeted from the never-fired `Set effort level to <level>` marker (retired /effort skill) to the real `/model` marker (`"<local-command-stdout>Set model to ... with <level> effort`), leading-quote guard against quoted-copy poisoning, tail 64KB -> 256KB.
+3. Deployed via `node install.js`; source and `~/.claude/statusline.js` byte-identical. Runtime ~45ms avg.
 
-## Fix
-- Added `getOAuthToken()` in `statusline.js`. Order: file → macOS Keychain via `security find-generic-password -s "Claude Code-credentials" -w` → null.
-- `fetchUsage()` now calls `getOAuthToken()` instead of reading the file directly.
-- Synchronous `execFileSync`, 2s timeout, stderr suppressed (avoids stray prompts in stdout).
-- First keychain hit may pop a permission dialog; subsequent calls are silent after "Always Allow".
-
-## Verified
-- `node statusline.js` with empty cache fetched fresh data and wrote `usage-cache.json` — no prompt (already authorized).
-- All 4 segments rendered cleanly: `Context: 35% | Weekly: 5% R:Sat 3PM | 5hr: 3% R:4h37m (2:00AM) | Opus 4.7:xhigh`.
-- Source + installed copy in sync via `node install.js`.
-
-## Updated docs
-- `CLAUDE.md` — Weekly Usage segment now mentions keychain fallback
-- `docs/wiki/usage-api.md` — new "Credential lookup" section with both code paths
-- This resume-point
-
-## Cross-platform notes
-- **Windows**: `~/.claude/.credentials.json` exists, file path used. Unchanged.
-- **macOS**: file does NOT exist by default. Keychain fallback kicks in.
-- **Linux**: not tested but file path should work; if Linux Claude Code ever moves to libsecret, add a third branch.
+## Current state
+- Working line: `Context: 42% | Weekly: 7% R:Sat 3PM | 5hr: 13% R:3h13m (5:09PM) | Fable: 9% | Fable 5:high`
+- All verified with real cache + fixture transcripts (fixture with xhigh marker beats settings-high; poison test on this session's own transcript passes).
+- CLAUDE.md, wiki (segments, usage-api, _index), docs/decisions.md all updated this session.
+- Committed + pushed at end of session (see git log).
 
 ## Next session should
-- Consider adding cost segment (`cost.total_cost_usd` in stdin) — still on the list from April
+- Consider cost segment (`cost.total_cost_usd`) - still on the list from April
 - Consider showing `vim.mode` when enabled
-- If `/effort` skill output format ever changes, update the regex in `readEffortFromTranscript`
-- If user complains about a Mac keychain permission popup on a different Mac, document the "Always Allow" step
+- Weekly segment shows `3PM` for a real 3:30 PM reset (hour-only format + API's :59.9 quirk documented in wiki/usage-api) - fix if user notices
+- If effort display ever looks stale: check whether /model's marker text changed (regex in `readEffortFromTranscript`), or whether the change scrolled past the 256KB tail
+
+## Known gotchas (see docs/decisions.md + wiki for detail)
+- API `resets_at` returns 09:59:59.64 for a 10:00 boundary - round to minute for display
+- Codex `@file` dispatch: Write tool `/tmp` = `<cwd-drive>:/tmp`, Git Bash `/tmp` differs - use absolute Windows paths (stale-file incident 2026-07-19, filed to CC-Wiki tools/claude-codex)

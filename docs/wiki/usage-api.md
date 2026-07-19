@@ -1,7 +1,7 @@
 ---
 title: "OAuth Usage API"
 date_created: 2026-04-20
-date_modified: 2026-05-09 (macOS keychain fallback)
+date_modified: "2026-07-19 Sunday 20:57:49 +05:30 (limits array + resets_at quirk)"
 summary: "Anthropic usage endpoint, cache strategy, rate-limit handling, credential lookup"
 type: article
 ---
@@ -27,16 +27,24 @@ The token is platform-specific:
 
 Both paths return `null` on failure; callers (e.g. `fetchUsage`) bail out silently. First-ever keychain access may pop a permission dialog — once the user clicks "Always Allow," subsequent calls are silent.
 
-## Response shape
+## Response shape (2026-07)
 ```json
 {
   "five_hour":       { "utilization": 22, "resets_at": "ISO-8601" },
   "seven_day":       { "utilization": 47, "resets_at": "ISO-8601" },
-  "seven_day_opus":  { "utilization": null },
-  "seven_day_sonnet":{ "utilization": null },
-  "extra_usage":     { "is_enabled": false, "utilization": 0, "used_credits": 0, "monthly_limit": 0 }
+  "seven_day_opus":  null,
+  "seven_day_sonnet": null,
+  "extra_usage":     { "is_enabled": false, "..." : "..." },
+  "limits": [
+    { "kind": "session",       "group": "session", "percent": 8, "resets_at": "ISO-8601", "scope": null },
+    { "kind": "weekly_all",    "group": "weekly",  "percent": 6, "resets_at": "ISO-8601", "scope": null },
+    { "kind": "weekly_scoped", "group": "weekly",  "percent": 8, "resets_at": "ISO-8601",
+      "scope": { "model": { "id": null, "display_name": "Fable" }, "surface": null } }
+  ]
 }
 ```
+- The `limits` array is the newer shape (first seen 2026-07); the old per-model top-level fields (`seven_day_opus` etc.) are now null. Model-scoped weekly caps (Fable) exist ONLY in `limits`.
+- **resets_at quirk**: the API can return a value one tick before the real boundary (`09:59:59.64` for a 10:00 reset). Round to the nearest minute before displaying, or 3:30 PM renders as 3:29 PM. The Weekly segment's hour-only format also hides half-hour resets (3:30 PM shows as `3PM`).
 
 ## Cache strategy (`usage-cache.json`)
 - File lives next to the installed `statusline.js` (so `~/.claude/usage-cache.json`).

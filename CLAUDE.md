@@ -29,9 +29,14 @@ Segments are joined with a dim ` | ` separator.
    - Uses `five_hour.utilization` and `five_hour.resets_at` from the usage API
    - Shows remaining time + local clock time of reset
    - Same stale indicator and color thresholds as weekly
-4. **Model + Effort** - Current model and reasoning effort (`Opus 4.7:max`)
-   - Model parsed from stdin `model.id` (e.g. `claude-opus-4-7` → `Opus 4.7`)
-   - Effort: tail-scans the transcript (`transcript_path` from stdin) for the last `Set effort level to <level>` marker emitted by the `/effort` skill. Falls back to `~/.claude/settings.json` `effortLevel` if no marker found. This reflects mid-session `/effort` changes, which are session-scoped and never written to settings.json.
+4. **Fable Weekly** - Model-scoped weekly usage (`Fable: 9%`)
+   - From the usage API's `limits` array: entry with `kind: "weekly_scoped"` and a `scope.model`; label comes from `scope.model.display_name`
+   - Hides when the cache has no `limits` array (older API format)
+   - No reset label (same weekly reset already shown in the Weekly segment)
+   - Same stale indicator and color thresholds as weekly
+5. **Model + Effort** - Current model and reasoning effort (`Fable 5:high`)
+   - Model parsed from stdin `model.id`: any family, one- or two-part version (`claude-fable-5` -> `Fable 5`, `claude-opus-4-8` -> `Opus 4.8`); 8-digit date suffixes ignored. Falls back to `model.display_name` if the id doesn't parse.
+   - Effort: tail-scans the last 256KB of the transcript (`transcript_path` from stdin) for the marker `/model` writes: a `<local-command-stdout>Set model to ... with <level> effort` line (level wrapped in ANSI bold, stored as literal backslash-u001b escapes in the JSONL). Last match wins; a leading quote in the pattern filters out quoted copies of the marker in ordinary messages. Falls back to `~/.claude/settings.json` `effortLevel` (which `/model` also updates, "saved as your default"). The old `Set effort level to <level>` marker from the retired `/effort` skill never appears in real transcripts and is no longer scanned.
 
 ## Deep Context
 
@@ -74,9 +79,17 @@ Header: `anthropic-beta: oauth-2025-04-20`
   "seven_day": { "utilization": 47, "resets_at": "ISO-8601" },
   "seven_day_opus": { "utilization": null },
   "seven_day_sonnet": { "utilization": null },
-  "extra_usage": { "is_enabled": false, "utilization": 0, "used_credits": 0, "monthly_limit": 0 }
+  "extra_usage": { "is_enabled": false, "utilization": 0, "used_credits": 0, "monthly_limit": 0 },
+  "limits": [
+    { "kind": "session", "group": "session", "percent": 8, "resets_at": "ISO-8601", "scope": null },
+    { "kind": "weekly_all", "group": "weekly", "percent": 6, "resets_at": "ISO-8601", "scope": null },
+    { "kind": "weekly_scoped", "group": "weekly", "percent": 8, "resets_at": "ISO-8601",
+      "scope": { "model": { "id": null, "display_name": "Fable" }, "surface": null } }
+  ]
 }
 ```
+
+The `limits` array is the newer shape (2026-07); the old per-model top-level fields (`seven_day_opus` etc.) are now null. `resets_at` may be a second before the real boundary (09:59:59.64 for 10:00) - round to the minute for display.
 
 This endpoint is tightly rate-limited. Fetch sparingly (every 5 min). On 429, use stale cache.
 

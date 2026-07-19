@@ -185,23 +185,52 @@ function sessionUsageSegment() {
   return { text: `5hr: ${stale}${rounded}%${resetLabel}`, color };
 }
 
+function fableWeeklySegment() {
+  const usage = readUsageCache();
+  if (!usage || !Array.isArray(usage.limits)) return null;
+
+  // Model-scoped weekly limit (e.g. Fable) from the limits array
+  const scoped = usage.limits.find(
+    (l) => l.kind === "weekly_scoped" && l.scope?.model
+  );
+  if (!scoped || scoped.percent == null) return null;
+
+  const label = scoped.scope.model.display_name || "Model";
+  const rounded = Math.round(scoped.percent);
+  const color = rounded < 50 ? GREEN : rounded < 75 ? YELLOW : RED;
+
+  // No reset label: same weekly reset already shown in the Weekly segment
+
+  // Stale indicator
+  const stale = usage._fetchedAt && (Date.now() - usage._fetchedAt > 10 * 60 * 1000) ? "~" : "";
+
+  return { text: `${label}: ${stale}${rounded}%`, color };
+}
+
 function readEffortFromTranscript(transcriptPath) {
-  // /effort is session-scoped — Claude Code doesn't expose the live value
-  // anywhere except the transcript, where the skill echoes
-  // "Set effort level to <level>". Tail-scan for the last match.
+  // Effort changes go through /model, which echoes a marker line into the
+  // transcript. Tail-scan for the last one so mid-session changes show
+  // per-session; settings.json only has the saved default.
   if (!transcriptPath) return null;
   try {
     const fd = fs.openSync(transcriptPath, "r");
     try {
       const size = fs.fstatSync(fd).size;
-      const readBytes = Math.min(size, 64 * 1024);
+      const readBytes = Math.min(size, 256 * 1024);
       const buf = Buffer.alloc(readBytes);
       fs.readSync(fd, buf, 0, readBytes, size - readBytes);
       const text = buf.toString("utf8");
-      const matches = text.match(/Set effort level to ([a-zA-Z]+)/g);
-      if (matches && matches.length) {
-        return matches[matches.length - 1].split(" ").pop();
-      }
+      // Effort marker: /model writes a local-command-stdout entry like
+      //   <local-command-stdout>Set model to ESC[1mFable 5ESC[22m and saved as
+      //   your default for new sessions with ESC[1mhighESC[22m effort
+      // In raw JSONL bytes ESC is the 6-char JSON escape (backslash-u001b). The leading quote
+      // distinguishes real entries from copies of the marker quoted inside
+      // other messages (which get extra escaping or a different prefix).
+      const re = /"<local-command-stdout>Set model to [^"]{0,160}? with \\u001b\[1m([a-zA-Z]+)\\u001b\[22m effort/g;
+      let m;
+      let last = null;
+      while ((m = re.exec(text))) last = m[1];
+      if (last) return last;
     } finally {
       fs.closeSync(fd);
     }
@@ -217,10 +246,12 @@ function modelEffortSegment(data) {
 
   let modelName = null;
   if (modelId) {
-    const m = modelId.match(/claude-(opus|sonnet|haiku)-(\d+)-(\d+)/i);
+    // Any family, one- or two-part version; (?!\d) keeps 8-digit date
+    // suffixes (claude-haiku-4-5-20251001) out of the minor slot
+    const m = modelId.match(/claude-([a-z]+)-(\d+)(?:-(\d{1,2})(?!\d))?/i);
     if (m) {
       const family = m[1][0].toUpperCase() + m[1].slice(1);
-      modelName = `${family} ${m[2]}.${m[3]}`;
+      modelName = m[3] ? `${family} ${m[2]}.${m[3]}` : `${family} ${m[2]}`;
     }
   }
   if (!modelName && displayName) modelName = displayName;
@@ -245,7 +276,7 @@ function modelEffortSegment(data) {
   return { text, color: DIM };
 }
 
-const SEGMENTS = [contextSegment, weeklyUsageSegment, sessionUsageSegment, modelEffortSegment];
+const SEGMENTS = [contextSegment, weeklyUsageSegment, sessionUsageSegment, fableWeeklySegment, modelEffortSegment];
 
 // --- stdin helper ---
 

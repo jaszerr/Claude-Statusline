@@ -1,7 +1,7 @@
 ---
 title: "Claude-Statusline Wiki Index"
 date_created: 2026-04-20
-date_modified: 2026-05-09 (macOS keychain credential fallback)
+date_modified: "2026-07-19 Sunday 20:57:49 +05:30 (Fable weekly segment; model/effort overhaul)"
 summary: "Compiled knowledge for the Claude-Statusline project"
 type: index
 ---
@@ -22,5 +22,6 @@ Minimal, zero-dep status line for Claude Code. Single `statusline.js` file.
 
 ## See also
 - `CLAUDE.md` — project rules (zero deps, single file, <100ms)
+- `docs/decisions.md` — session decision log (started 2026-07-19)
 - `docs/resume-point.md` — latest session state
 - `COMPETITIVE-AUDIT.md` — feature inventory across 11 similar projects
