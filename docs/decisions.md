@@ -1,5 +1,20 @@
 # Decisions Log
 
+## 2026-07-20 Monday 11:52:26 +05:30 - Weekly Pace benchmark segment (Claude-Statusline session, Brain Mode)
+
+**Pace is a separate segment, not inline per value.** User picked `Pace: 26% D2` as its own segment (between Fable and Model+Effort) over `Weekly: 47%/43%` inline, since Weekly and Fable share the same 7-day window - one benchmark serves both. Rejected: duplicating the pace after each value.
+
+**Pace advances hourly, not in daily steps.** Original spec was day-granular (day x 100/7); user corrected mid-build to hourly: `pace = round(hoursElapsed * 100 / 168)`, clamped 0..168. The `D<n>` label stays day-granular (floor(hours/24)+1, clamped 1..7). Spec change was delivered to the running helper via SendMessage without restarting the task.
+
+**Weekly and Fable are colored against pace, not fixed thresholds.** GREEN at/under pace, YELLOW up to pace+10, RED beyond. The old 50/75 coloring survives only as the fallback when `resets_at` is missing (shared `computePace()` returns null). Segment text unchanged - only color logic moved.
+
+**Pace stays DIM - cyan tried and reverted same session.** User saw the dim Pace as "greyed out, no colors", we shipped bright cyan (`\x1b[96m`), then user understood the model (the benchmark itself never changes color; Weekly/Fable change against it) and asked for the revert. Post-revert file hash equals the pre-cyan hash exactly (`974f6a45...`). Lesson: a dim benchmark next to colored metrics reads as broken to users at first - explain the benchmark-vs-status distinction up front when adding one.
+
+**Gotchas (learnings layer, folded here):**
+- Floor semantics: minutes before the weekly boundary pace shows 99%, not 100%; the 168 clamp only fires at/past the boundary. Intentional, matches spec math.
+- Pace is clock-based: it keeps advancing when the usage cache is stale (only `resets_at` comes from cache), so the `~` stale marker on Pace means the reset anchor is old, not the pace math.
+- Deployed to this machine (`node install.js`) and pushed as `9c85747`; other machines update via the handoff prompt saved at `C:\Users\jsrat\Desktop\update-statusline-pace-prompt.md` (git pull + node install.js + verify).
+
 ## 2026-07-19 Sunday 20:57:49 +05:30 - Fable weekly segment + model/effort overhaul (Claude-Statusline session)
 
 **Fable weekly segment reads the new `limits` array, not the old per-model fields.** The usage API (2026-07 shape) added `limits[]`; the model-scoped weekly entry is `kind: "weekly_scoped"` with `scope.model.display_name: "Fable"`. The old `seven_day_opus` / `seven_day_sonnet` top-level fields are all null now. Label comes from the API so it adapts if the scoped model changes. Segment hides when `limits` is absent (old cache format).

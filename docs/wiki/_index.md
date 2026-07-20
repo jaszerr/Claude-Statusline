@@ -1,7 +1,7 @@
 ---
 title: "Claude-Statusline Wiki Index"
 date_created: 2026-04-20
-date_modified: "2026-07-19 Sunday 20:57:49 +05:30 (Fable weekly segment; model/effort overhaul)"
+date_modified: "2026-07-20 Monday 11:52:26 +05:30 (Pace benchmark segment; pace-relative coloring)"
 summary: "Compiled knowledge for the Claude-Statusline project"
 type: index
 ---

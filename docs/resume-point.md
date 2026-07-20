@@ -1,26 +1,28 @@
 # Resume Point
 
-## 2026-07-19 Sunday 20:57:49 +05:30 - Fable weekly segment + model/effort overhaul
+## 2026-07-20 Monday 11:52:26 +05:30 - Weekly Pace benchmark segment (Brain Mode session)
 
 ## What happened
-1. **New segment**: Fable weekly usage (`Fable: 9%`), between 5hr and Model+Effort. Reads the usage API's new `limits[]` array (`kind: "weekly_scoped"`, model scope); label from `scope.model.display_name`. No reset label (user decision - same reset as Weekly). Hides gracefully on old-format caches.
-2. **Model+Effort audit** (user request, run by Claude + Codex independently): segment showed the right thing but only via fallback paths. Both fixes then applied on user's "apply":
-   - Model regex widened: any family, one- or two-part version, date suffixes ignored (`claude-fable-5` -> `Fable 5` directly; before, only display_name luck).
-   - Effort scan retargeted from the never-fired `Set effort level to <level>` marker (retired /effort skill) to the real `/model` marker (`"<local-command-stdout>Set model to ... with <level> effort`), leading-quote guard against quoted-copy poisoning, tail 64KB -> 256KB.
-3. Deployed via `node install.js`; source and `~/.claude/statusline.js` byte-identical. Runtime ~45ms avg.
+1. **New segment**: Pace even-burn benchmark (`Pace: 26% D2`), between Fable and Model+Effort. Shared `computePace()`: window start = `seven_day.resets_at` minus 7 days, `pace = round(hoursElapsed * 100/168)` (hourly, user corrected from daily mid-build), `D<n>` day label. DIM color, `~` stale prefix, hides without `resets_at`.
+2. **Weekly + Fable recolored pace-relative**: GREEN at/under pace, YELLOW to pace+10, RED beyond; fixed 50/75 thresholds remain as fallback when pace is null. Text unchanged.
+3. **Cyan detour**: Pace briefly shipped bright cyan (`\x1b[96m`) after user read dim as "no colors", then reverted to DIM once the benchmark-vs-status model clicked. Final file hash equals pre-cyan hash (`974f6a45...`).
+4. Built entirely via Brain Mode helper (opus-xhigh, one continued agent across build/install/cyan/revert/commit); every return spot-checked from the orchestrator session (hashes, renders, escape codes, git state).
+5. Deployed here via `node install.js` (source == installed, sha `974f6a45...`) and committed+pushed as `9c85747` ("Add weekly Pace benchmark segment; recolor Weekly/Fable vs pace").
 
 ## Current state
-- Working line: `Context: 42% | Weekly: 7% R:Sat 3PM | 5hr: 13% R:3h13m (5:09PM) | Fable: 9% | Fable 5:high`
-- All verified with real cache + fixture transcripts (fixture with xhigh marker beats settings-high; poison test on this session's own transcript passes).
-- CLAUDE.md, wiki (segments, usage-api, _index), docs/decisions.md all updated this session.
-- Committed + pushed at end of session (see git log).
+- Working line: `Context: 42% | Weekly: 18% R:Sat 3PM | 5hr: 44% R:2h10m (1:29PM) | Fable: 21% | Pace: 26% D2 | Fable 5:high`
+- Runtime ~37-39ms. All edge fixtures verified (no resets_at fallback, D1/D7 clamps, color boundaries at pace/pace+10/pace+11).
+- CLAUDE.md, wiki (segments, _index), docs/decisions.md updated this session; docs committed at end of session.
 
-## Next session should
-- Consider cost segment (`cost.total_cost_usd`) - still on the list from April
-- Consider showing `vim.mode` when enabled
-- Weekly segment shows `3PM` for a real 3:30 PM reset (hour-only format + API's :59.9 quirk documented in wiki/usage-api) - fix if user notices
-- If effort display ever looks stale: check whether /model's marker text changed (regex in `readEffortFromTranscript`), or whether the change scrolled past the 256KB tail
+## Next action
+- **Other machines still on the old statusline.** Paste the handoff prompt from `C:\Users\jsrat\Desktop\update-statusline-pace-prompt.md` into a session on each (git pull to `9c85747` + `node install.js` + verify).
 
-## Known gotchas (see docs/decisions.md + wiki for detail)
-- API `resets_at` returns 09:59:59.64 for a 10:00 boundary - round to minute for display
-- Codex `@file` dispatch: Write tool `/tmp` = `<cwd-drive>:/tmp`, Git Bash `/tmp` differs - use absolute Windows paths (stale-file incident 2026-07-19, filed to CC-Wiki tools/claude-codex)
+## Backlog (unchanged)
+- Cost segment (`cost.total_cost_usd`) - on the list since April
+- `vim.mode` display when enabled
+- Weekly reset shows `3PM` for a real 3:30 PM reset (hour-only format; quirk documented in wiki/usage-api)
+
+## Known gotchas (see docs/decisions.md + wiki/segments for detail)
+- Pace shows 99% minutes before the weekly boundary (floor); 100% only at/past it. Intentional.
+- Pace is clock-based: keeps advancing on stale cache; `~` on Pace means the reset anchor is old, not the math.
+- API `resets_at` returns 09:59:59.64 for a 10:00 boundary - round to minute for any future reset display.

@@ -33,8 +33,12 @@ Segments are joined with a dim ` | ` separator.
    - From the usage API's `limits` array: entry with `kind: "weekly_scoped"` and a `scope.model`; label comes from `scope.model.display_name`
    - Hides when the cache has no `limits` array (older API format)
    - No reset label (same weekly reset already shown in the Weekly segment)
-   - Same stale indicator and color thresholds as weekly
-5. **Model + Effort** - Current model and reasoning effort (`Fable 5:high`)
+   - Same stale indicator as weekly; colored pace-relative (see Pace)
+5. **Pace** - Even-burn benchmark for the weekly window (`Pace: 26% D2`)
+   - `computePace()`: window start = `seven_day.resets_at` minus 7 days; pace = `round(hoursElapsed * 100 / 168)` (advances hourly, clamped 0..168); `D<n>` = day of window 1-7
+   - Clock-based, so it keeps advancing on a stale cache; only `resets_at` comes from cache. Hides when `resets_at` is missing.
+   - Color: DIM always (it is the benchmark, not a status). Weekly and Fable are colored against it: GREEN at/under pace, YELLOW up to pace+10, RED beyond; they fall back to the old 50/75 thresholds when pace is unavailable.
+6. **Model + Effort** - Current model and reasoning effort (`Fable 5:high`)
    - Model parsed from stdin `model.id`: any family, one- or two-part version (`claude-fable-5` -> `Fable 5`, `claude-opus-4-8` -> `Opus 4.8`); 8-digit date suffixes ignored. Falls back to `model.display_name` if the id doesn't parse.
    - Effort: tail-scans the last 256KB of the transcript (`transcript_path` from stdin) for the marker `/model` writes: a `<local-command-stdout>Set model to ... with <level> effort` line (level wrapped in ANSI bold, stored as literal backslash-u001b escapes in the JSONL). Last match wins; a leading quote in the pattern filters out quoted copies of the marker in ordinary messages. Falls back to `~/.claude/settings.json` `effortLevel` (which `/model` also updates, "saved as your default"). The old `Set effort level to <level>` marker from the retired `/effort` skill never appears in real transcripts and is no longer scanned.
 
@@ -100,7 +104,7 @@ This endpoint is tightly rate-limited. Fetch sparingly (every 5 min). On 429, us
 | GREEN | `\x1b[32m` | Good / low values |
 | YELLOW | `\x1b[33m` | Warning / medium |
 | RED | `\x1b[31m` | Critical / high |
-| DIM | `\x1b[2m` | Separators, inactive |
+| DIM | `\x1b[2m` | Separators, inactive, benchmark segments (Pace, Model+Effort) |
 | RESET | `\x1b[0m` | Always close colors |
 
 ## Rules
