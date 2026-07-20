@@ -114,6 +114,26 @@ function contextSegment(data) {
   return { text: `Context: ${rounded}%`, color };
 }
 
+// Weekly pace benchmark: where a perfectly even burn-down would sit right now.
+// Window start = seven_day.resets_at minus 7 days. Pace advances hourly:
+// hoursElapsed is 0..168, pace is round(hoursElapsed * 100 / 168). The day
+// label stays day-granular: day = floor(hoursElapsed / 24) + 1, clamped 1..7.
+// Returns null when resets_at is missing so callers can fall back to fixed
+// thresholds.
+function computePace(usage) {
+  const resetAt = usage?.seven_day?.resets_at;
+  if (!resetAt) return null;
+  const windowStart = new Date(resetAt).getTime() - 7 * 86400000;
+  let hoursElapsed = Math.floor((Date.now() - windowStart) / 3600000);
+  if (hoursElapsed < 0) hoursElapsed = 0;
+  if (hoursElapsed > 168) hoursElapsed = 168;
+  const pace = Math.round((hoursElapsed * 100) / 168);
+  let day = Math.floor(hoursElapsed / 24) + 1;
+  if (day < 1) day = 1;
+  if (day > 7) day = 7;
+  return { day, pace };
+}
+
 function weeklyUsageSegment() {
   const usage = readUsageCache();
   if (!usage) return null;
@@ -124,7 +144,11 @@ function weeklyUsageSegment() {
   if (weekly == null) return null;
 
   const rounded = Math.round(weekly);
-  const color = rounded < 50 ? GREEN : rounded < 75 ? YELLOW : RED;
+  // Color relative to the even-burn pace; fall back to fixed thresholds.
+  const p = computePace(usage);
+  const color = p
+    ? (rounded <= p.pace ? GREEN : rounded <= p.pace + 10 ? YELLOW : RED)
+    : (rounded < 50 ? GREEN : rounded < 75 ? YELLOW : RED);
 
   // Calculate reset info
   let resetLabel = "";
@@ -197,7 +221,11 @@ function fableWeeklySegment() {
 
   const label = scoped.scope.model.display_name || "Model";
   const rounded = Math.round(scoped.percent);
-  const color = rounded < 50 ? GREEN : rounded < 75 ? YELLOW : RED;
+  // Color relative to the even-burn pace; fall back to fixed thresholds.
+  const p = computePace(usage);
+  const color = p
+    ? (rounded <= p.pace ? GREEN : rounded <= p.pace + 10 ? YELLOW : RED)
+    : (rounded < 50 ? GREEN : rounded < 75 ? YELLOW : RED);
 
   // No reset label: same weekly reset already shown in the Weekly segment
 
@@ -205,6 +233,20 @@ function fableWeeklySegment() {
   const stale = usage._fetchedAt && (Date.now() - usage._fetchedAt > 10 * 60 * 1000) ? "~" : "";
 
   return { text: `${label}: ${stale}${rounded}%`, color };
+}
+
+function paceSegment() {
+  const usage = readUsageCache();
+  if (!usage) return null;
+
+  // Even-burn benchmark (dim): hourly pace percent + day-of-window number.
+  const p = computePace(usage);
+  if (!p) return null;
+
+  // Stale indicator: same ~ prefix the other usage segments use
+  const stale = usage._fetchedAt && (Date.now() - usage._fetchedAt > 10 * 60 * 1000) ? "~" : "";
+
+  return { text: `Pace: ${stale}${p.pace}% D${p.day}`, color: DIM };
 }
 
 function readEffortFromTranscript(transcriptPath) {
@@ -276,7 +318,7 @@ function modelEffortSegment(data) {
   return { text, color: DIM };
 }
 
-const SEGMENTS = [contextSegment, weeklyUsageSegment, sessionUsageSegment, fableWeeklySegment, modelEffortSegment];
+const SEGMENTS = [contextSegment, weeklyUsageSegment, sessionUsageSegment, fableWeeklySegment, paceSegment, modelEffortSegment];
 
 // --- stdin helper ---
 
