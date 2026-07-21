@@ -1,5 +1,17 @@
 # Resume Point
 
+## 2026-07-21 Tuesday 11:29:50 +05:30 - This machine verified current (Brain Mode session)
+
+## What happened
+- User pasted the machine-update handoff prompt (from `C:\Users\jsrat\Desktop\update-statusline-pace-prompt.md`) into this session. Ran it here via one opus-xhigh helper: `git pull` (already up to date, HEAD `5d8c43a`, contains `9c85747`), `node install.js`, then 3-point verify.
+- Result: source and installed copies byte-identical (sha256 `974F6A45...DD28EDF`, the known-good Pace build), `paceSegment` present, `CYAN` absent, live render shows `Pace: 39% D3`. Orchestrator re-checked hashes and strings independently. No files edited, nothing committed by the helper.
+- Net: this machine needed nothing; it was already deployed on 2026-07-20. Run served as re-verify.
+
+## Next action
+- **Other machines still on the old statusline.** Paste the same Desktop handoff prompt into a session on each remaining machine (git pull to include `9c85747` + `node install.js` + verify). This machine is done.
+
+## Previous session
+
 ## 2026-07-20 Monday 11:52:26 +05:30 - Weekly Pace benchmark segment (Brain Mode session)
 
 ## What happened
