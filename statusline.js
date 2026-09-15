@@ -263,12 +263,15 @@ function readEffortFromTranscript(transcriptPath) {
       fs.readSync(fd, buf, 0, readBytes, size - readBytes);
       const text = buf.toString("utf8");
       // Effort marker: /model writes a local-command-stdout entry like
-      //   <local-command-stdout>Set model to ESC[1mFable 5ESC[22m and saved as
-      //   your default for new sessions with ESC[1mhighESC[22m effort
-      // In raw JSONL bytes ESC is the 6-char JSON escape (backslash-u001b). The leading quote
-      // distinguishes real entries from copies of the marker quoted inside
-      // other messages (which get extra escaping or a different prefix).
-      const re = /"<local-command-stdout>Set model to [^"]{0,160}? with \\u001b\[1m([a-zA-Z]+)\\u001b\[22m effort/g;
+      //   <local-command-stdout>Set model to `Fable 5.1` and saved as
+      //   your default for new sessions with `low` effort
+      // Older Claude Code builds wrapped the level in ANSI bold instead of
+      // backticks (ESC[1mhighESC[22m); in raw JSONL bytes ESC is the 6-char
+      // JSON escape (backslash-u001b). Both forms appear in real transcripts,
+      // so accept either. The leading quote distinguishes real entries from
+      // copies of the marker quoted inside other messages (which get extra
+      // escaping or a different prefix).
+      const re = /"<local-command-stdout>Set model to [^"]{0,200}? with (?:`|\\u001b\[1m)([a-zA-Z]+)(?:`|\\u001b\[22m) effort/g;
       let m;
       let last = null;
       while ((m = re.exec(text))) last = m[1];
@@ -308,7 +311,11 @@ function modelEffortSegment(data) {
         "settings.json"
       );
       const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
-      effort = settings.effortLevel;
+      // /model saves per-model effort under modelSettings[<model id>]; the
+      // top-level effortLevel is only the global default and goes stale when
+      // another model's effort is changed later. Prefer the per-model key.
+      effort =
+        settings.modelSettings?.[modelId]?.effortLevel || settings.effortLevel;
     } catch {
       // settings not readable, skip effort
     }

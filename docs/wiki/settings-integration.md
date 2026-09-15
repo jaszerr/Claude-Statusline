@@ -9,7 +9,7 @@ type: article
 # Settings Integration
 
 ## What we read
-`~/.claude/settings.json` → `effortLevel` (values seen: `"low"`, `"medium"`, `"high"`, `"xhigh"`, `"max"`).
+`~/.claude/settings.json` -> `modelSettings[<model.id>].effortLevel` first, then the global `effortLevel` as a backstop (values seen: `"low"`, `"medium"`, `"high"`, `"xhigh"`, `"max"`). `/model` writes the per-model key for the model you set; the global key is a separate default that goes stale as soon as a different model's effort is changed. Reading only the global key was the 2026-09-15 bug where a model set to `low` displayed as `medium`.
 
 Also present but not consumed yet: `alwaysThinkingEnabled`, `permissions`, `hooks`, `enabledPlugins`.
 
@@ -22,7 +22,8 @@ Before the transcript-tail approach was added (April 2026), the statusline read 
 ```js
 try {
   const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
-  effort = settings.effortLevel;
+  effort =
+    settings.modelSettings?.[modelId]?.effortLevel || settings.effortLevel;
 } catch {
   // settings not readable, skip effort
 }

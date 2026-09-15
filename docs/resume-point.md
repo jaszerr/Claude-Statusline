@@ -1,5 +1,20 @@
 # Resume Point
 
+## 2026-09-15 Tuesday 17:37:41 +05:30 - Effort detection fixed (per-model settings key + backtick marker)
+
+## What happened
+- Bug: status line showed `Fable 5.1:medium` while `/model` had set Fable 5.1 to `low`. Audited read-only first, then fixed on approval.
+- Two defects. (1) The settings fallback read the global `settings.effortLevel` (`medium`) and ignored `settings.modelSettings["claude-fable-5-1"].effortLevel` (`low`) - this was the live cause. (2) The transcript regex only matched the old ANSI-bold marker; Claude Code builds from 2026-09-02 write the level in backticks instead.
+- Both fixed in `statusline.js` (regex accepts either delimiter, prefix budget 160 -> 200; fallback prefers the per-model key). 256KB tail left as-is on purpose.
+- Verified with four fixtures built from real transcript lines, all passing. Scan cost went 0.57 ms -> 0.50 ms, no regression. Installed via `node install.js`; source and installed copy match at sha256 `6d364276a91310087bee1914a2b9941bccd265eaa648a5fe6b3634bb83abdcd7`. Live render on this machine: `Fable 5.1:low`.
+- Docs updated: CLAUDE.md item 6, `docs/wiki/segments.md`, `docs/wiki/settings-integration.md` (the last one held a verbatim copy of the fixed line).
+
+## Next action
+- **Other machines still run the old build.** On each, `git pull` (to include this commit) then `node install.js`, then confirm the effort suffix matches what `/model` reports. No handoff prompt was written this time; those three steps are the whole job.
+- Optional, not done: `readEffortFromTranscript` still only sees the last 256KB. With the per-model settings fallback now correct this no longer produces a wrong value, so it was left alone deliberately.
+
+## Previous session
+
 ## 2026-07-21 Tuesday 11:29:50 +05:30 - This machine verified current (Brain Mode session)
 
 ## What happened
