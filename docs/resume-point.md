@@ -10,7 +10,7 @@
 - Docs updated: CLAUDE.md item 6, `docs/wiki/segments.md`, `docs/wiki/settings-integration.md` (the last one held a verbatim copy of the fixed line).
 
 ## Next action
-- **Other machines still run the old build.** On each, `git pull` (to include this commit) then `node install.js`, then confirm the effort suffix matches what `/model` reports. No handoff prompt was written this time; those three steps are the whole job.
+- **Other machines still run the old build.** On each, `git pull` (to include this commit) then `node install.js`, then confirm the effort suffix matches what `/model` reports. Update 2026-09-15 Tuesday 18:10:05 +05:30: a handoff prompt for the home PC was sent to Telegram (text message and file update-statusline-effort-fix-prompt.txt) after the push landed; it does pull, commit check, node install.js, hash compare, live render. Paste it into a session on each remaining machine.
 - Optional, not done: `readEffortFromTranscript` still only sees the last 256KB. With the per-model settings fallback now correct this no longer produces a wrong value, so it was left alone deliberately.
 
 ## Previous session
