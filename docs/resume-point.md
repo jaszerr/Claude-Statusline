@@ -1,5 +1,18 @@
 # Resume Point
 
+## 2026-09-23 Wednesday 12:16:23 +05:30 - Effort lookup fixed for [1m] model ids
+
+## What happened
+- Confirmed this machine was on the latest build (HEAD `f7d7c1d`, installed == source).
+- User saw `Opus 5.5:medium`; saved Opus effort is `high`. Cause: stdin id `claude-opus-5-5[1m]` missed the settings key `claude-opus-5-5`, so the stale global `effortLevel` won.
+- Fixed in `statusline.js` (`modelEffortSegment` strips a trailing `[...]` tag before the `modelSettings` lookup). Installed via `node install.js`; sha256 `63b5363e...9385` on both copies. Committed + pushed as `bc5de1a`. Docs: CLAUDE.md item 6, `docs/decisions.md`, `docs/wiki/segments.md`, `docs/wiki/settings-integration.md`.
+
+## Next action
+- **Other machines:** `git pull` (to include `bc5de1a`) then `node install.js`, then check the effort suffix in a 1M-context Opus session matches `/model`.
+- Accepted limit: an effort set by launch flag (not `/model`) is invisible to the bar.
+
+## Previous session
+
 ## 2026-09-15 Tuesday 17:37:41 +05:30 - Effort detection fixed (per-model settings key + backtick marker)
 
 ## What happened

@@ -1,5 +1,15 @@
 # Decisions Log
 
+## 2026-09-23 Wednesday 12:16:23 +05:30 - Effort lookup fixed for [1m] model ids (Claude-Statusline session)
+
+**Symptom:** live bar showed `Opus 5.5:medium` while `settings.json` held `modelSettings["claude-opus-5-5"].effortLevel = "high"`.
+
+**Cause:** Claude Code passes stdin `model.id` with the context-window tag, e.g. `claude-opus-5-5[1m]`. `/model` saves per-model effort under the bare id (`claude-opus-5-5`). The lookup `modelSettings[modelId]` missed and fell through to the stale global `effortLevel` (`medium`). No `/model` marker was in this session's transcript, so the settings fallback was the only source.
+
+**Fix:** `modelEffortSegment` strips a trailing `[...]` tag before the lookup: `settingsKey = modelId?.replace(/\[[^\]]*\]$/, "")`. Display-name parsing was already unaffected (its regex ignores the suffix). Only one real approach existed, so no options round. Verified: `claude-opus-5-5[1m]` -> high, `claude-opus-5-5` -> high, `claude-fable-5-1` -> low, `claude-sonnet-5` -> medium (no key, global fallback). Installed via `node install.js`, source == installed at sha256 `63b5363e3f8f3029e447303c52c40a6af6c4ad53f96b2c463e326b25575d9385`. Committed and pushed as `bc5de1a`.
+
+**Lesson:** test renders must use the real stdin id. The first check of this session fed `claude-opus-5-5` (no tag) and wrongly looked correct. See [[settings-integration]], [[segments]].
+
 ## 2026-09-15 Tuesday 17:37:41 +05:30 - Effort detection fixed and deployed (Claude-Statusline)
 
 **Both proposed fixes applied, installed, and committed.** `statusline.js` now renders `Fable 5.1:low` on this machine; the installed copy matches source at sha256 `6d364276a91310087bee1914a2b9941bccd265eaa648a5fe6b3634bb83abdcd7`.

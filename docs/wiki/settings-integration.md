@@ -11,6 +11,8 @@ type: article
 ## What we read
 `~/.claude/settings.json` -> `modelSettings[<model.id>].effortLevel` first, then the global `effortLevel` as a backstop (values seen: `"low"`, `"medium"`, `"high"`, `"xhigh"`, `"max"`). `/model` writes the per-model key for the model you set; the global key is a separate default that goes stale as soon as a different model's effort is changed. Reading only the global key was the 2026-09-15 bug where a model set to `low` displayed as `medium`.
 
+**Key normalization:** stdin `model.id` can carry a context-window tag (`claude-opus-5-5[1m]`); settings keys never do (`claude-opus-5-5`). Strip `/\[[^\]]*\]$/` before the lookup, or the per-model key misses and the stale global wins. That was the 2026-09-23 bug (`Opus 5.5:medium` for a model saved as `high`). Always test with the real tagged id.
+
 Also present but not consumed yet: `alwaysThinkingEnabled`, `permissions`, `hooks`, `enabledPlugins`.
 
 ## Fallback only — not primary source for effort
@@ -22,8 +24,9 @@ Before the transcript-tail approach was added (April 2026), the statusline read 
 ```js
 try {
   const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+  const settingsKey = modelId?.replace(/\[[^\]]*\]$/, "");
   effort =
-    settings.modelSettings?.[modelId]?.effortLevel || settings.effortLevel;
+    settings.modelSettings?.[settingsKey]?.effortLevel || settings.effortLevel;
 } catch {
   // settings not readable, skip effort
 }
