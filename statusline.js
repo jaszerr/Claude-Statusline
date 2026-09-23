@@ -314,8 +314,10 @@ function modelEffortSegment(data) {
       // /model saves per-model effort under modelSettings[<model id>]; the
       // top-level effortLevel is only the global default and goes stale when
       // another model's effort is changed later. Prefer the per-model key.
+      // The key has no context-window tag, so strip "[1m]" from the stdin id.
+      const settingsKey = modelId?.replace(/\[[^\]]*\]$/, "");
       effort =
-        settings.modelSettings?.[modelId]?.effortLevel || settings.effortLevel;
+        settings.modelSettings?.[settingsKey]?.effortLevel || settings.effortLevel;
     } catch {
       // settings not readable, skip effort
     }
