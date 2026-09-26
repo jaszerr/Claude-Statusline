@@ -130,7 +130,9 @@ node install.js
 ```
 
 This copies `statusline.js` to `~/.claude/` and sets up `settings.json` automatically.
-Cross-platform (Windows + Mac). Restart Claude Code after running.
+Cross-platform (Windows + Mac). Restart Claude Code once after a first install (new `statusLine` setting). Updates need no restart: each render spawns a fresh `node` process, so running sessions pick up the new copy on their next render. <!-- updated: 2026-09-26 Saturday 11:43:49 +05:30 -->
+
+The E: drive is portable (label `T7`) and moves between the home and office PCs. The repo travels with it; the installed `~/.claude/statusline.js` does not. After every fix, run `node install.js` on each machine. Check the code across machines with `git rev-parse HEAD:statusline.js` (blob id), not a file sha256: a Windows CRLF checkout changes the sha256. <!-- added: 2026-09-26 Saturday 11:43:49 +05:30 -->
 
 Manual alternative:
 1. Copy `statusline.js` to `~/.claude/statusline.js`
