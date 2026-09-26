@@ -40,7 +40,11 @@ Segments are joined with a dim ` | ` separator.
    - Color: DIM always (it is the benchmark, not a status). Weekly and Fable are colored against it: GREEN at/under pace, YELLOW up to pace+10, RED beyond; they fall back to the old 50/75 thresholds when pace is unavailable.
 6. **Model + Effort** - Current model and reasoning effort (`Fable 5:high`)
    - Model parsed from stdin `model.id`: any family, one- or two-part version (`claude-fable-5` -> `Fable 5`, `claude-opus-4-8` -> `Opus 4.8`); 8-digit date suffixes ignored. Falls back to `model.display_name` if the id doesn't parse.
-   - Effort: tail-scans the last 256KB of the transcript (`transcript_path` from stdin) for the marker `/model` writes: a `<local-command-stdout>Set model to ... with <level> effort` line. The level is wrapped in backticks (Claude Code builds from 2026-09-02 on) or in ANSI bold stored as literal backslash-u001b escapes (older builds); the regex accepts both forms. Last match wins; a leading quote in the pattern filters out quoted copies of the marker in ordinary messages. Falls back to `~/.claude/settings.json`, preferring the per-model key `modelSettings[<model.id>].effortLevel` (with any `[1m]` context tag stripped from the id first, since the settings keys never carry it) over the global `effortLevel` (the global one goes stale as soon as another model's effort is changed). The old `Set effort level to <level>` marker from the retired `/effort` skill never appears in real transcripts and is no longer scanned.
+   - Effort, in this order (2026-09-26):
+     1. stdin `effort.level` (Claude Code 2.1.119+). This is the live per-session value, including session-only `max` and mid-session changes. An empty level shows the model name only.
+     2. `effort` absent but `thinking` present (2.1.119+ build, model has no effort setting): show the model name only. The transcript and settings are not read.
+     3. Both absent (Claude Code older than 2.1.119): legacy chain. Tail-scan the last 256KB of the transcript (`transcript_path`) for the marker `/model` writes: a `<local-command-stdout>Set model to ... with <level> effort` line. The level is wrapped in backticks (builds from 2026-09-02 on) or in ANSI bold stored as literal backslash-u001b escapes (older builds); the regex accepts both forms. Last match wins; a leading quote in the pattern filters out quoted copies of the marker in ordinary messages. Then fall back to `~/.claude/settings.json`, preferring the per-model key `modelSettings[<model.id>].effortLevel` (with any `[1m]` context tag stripped from the id first) over the global `effortLevel`.
+   - Why stdin first: the `/model` marker usually leaves the 256KB tail within a turn or two, and the settings values are shared across all sessions (and never hold `max`), so the legacy chain showed another session's effort.
 
 ## Deep Context
 
@@ -63,6 +67,8 @@ Claude Code pipes JSON via stdin on each assistant message. Known fields:
 - `context_window.total_input_tokens` / `total_output_tokens` / `context_window_size`
 - `cost.total_cost_usd` - Session cost
 - `model.id` / `model.display_name` - Current model
+- `effort.level` - Live reasoning effort for this session (Claude Code 2.1.119+). Includes session-only `max` and mid-session changes. The whole `effort` object is absent when the model has no effort setting.
+- `thinking.enabled` - Extended thinking on/off (Claude Code 2.1.119+, always present on those builds)
 - `workspace.current_dir` / `workspace.project_dir` / `workspace.added_dirs`
 - `session_id`, `version`, `transcript_path`, `cwd`
 - `cost.total_cost_usd` / `cost.total_duration_ms` / `cost.total_api_duration_ms`

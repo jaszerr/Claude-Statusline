@@ -2,6 +2,7 @@
 title: "Segments"
 date_created: 2026-04-20
 date_modified: "2026-07-20 Monday 11:52:26 +05:30 (Pace benchmark segment; Weekly/Fable pace-relative coloring)"
+updated_at: "2026-09-26 Saturday 10:06:48 +05:30 (Model+Effort reads stdin effort.level first)"
 summary: "Every segment in the status line: inputs, output format, color rules"
 type: article
 ---
@@ -44,11 +45,16 @@ Rendered left-to-right, joined by `DIM | RESET`.
 - Edge: minutes before the weekly boundary pace shows 99% (floor), 100% only at/past the boundary
 
 ## 6. Model + Effort (`modelEffortSegment`)
-- **Source**: stdin `model.id` (regex-parsed) + effort detection (transcript -> settings fallback)
+- **Source**: stdin `model.id` (regex-parsed) + stdin `effort.level` (Claude Code 2.1.119+); transcript -> settings chain only on older builds
 - **Output**: `Fable 5:high` (just the model name if no effort resolved)
 - **Color**: DIM - this is identification, not a metric; shouldn't compete with usage numbers
 - **Model parsing**: `/claude-([a-z]+)-(\d+)(?:-(\d{1,2})(?!\d))?/i` - any family, one- or two-part version (`claude-fable-5` -> `Fable 5`, `claude-opus-4-8` -> `Opus 4.8`); `(?!\d)` keeps 8-digit date suffixes (`claude-haiku-4-5-20251001`) out of the minor slot. Falls back to `model.display_name` if the id doesn't parse.
-- **Effort detection** (`readEffortFromTranscript`), overhauled 2026-07-19, repaired 2026-09-15 and 2026-09-23:
+- **Effort order** (2026-09-26):
+  1. stdin `effort.level` (Claude Code 2.1.119+). Live per-session value, including session-only `max` and mid-session changes. An empty level shows the model name only.
+  2. `effort` absent but `thinking` present (2.1.119+ build, model has no effort setting): model name only. Transcript and settings are not read.
+  3. Both absent (Claude Code older than 2.1.119): the legacy chain below.
+  Why: the legacy chain almost never saw the session's own `/model` marker (it leaves the 256KB tail within a turn or two), and settings values are shared by all sessions and never hold `max`, so a session showed whatever effort another session saved last.
+- **Legacy effort detection** (`readEffortFromTranscript` + settings; pre-2.1.119 builds only), overhauled 2026-07-19, repaired 2026-09-15 and 2026-09-23:
   1. Tail-scan the last 256KB of `transcript_path` for the marker `/model` writes: `"<local-command-stdout>Set model to ... with <level> effort`. The level is delimited by backticks in Claude Code builds from 2026-09-02 on, and by ANSI bold (literal backslash-u001b escapes in the JSONL) in older builds; the regex accepts either delimiter, since both forms exist in real transcript history. Latest match wins. The required leading quote filters out quoted copies of the marker inside ordinary messages (they get extra escaping or a different prefix).
   2. Fallback: `~/.claude/settings.json`, preferring the per-model key `modelSettings[<model.id>].effortLevel` (after stripping a trailing `[1m]`-style context tag from the id, since stdin sends `claude-opus-5-5[1m]` but settings keys are bare) and using the global `effortLevel` only when the running model has no per-model entry. `/model` writes the per-model key for the model you set; the global key is a separate default that goes stale as soon as a different model's effort is changed, which is what made the segment report `medium` for a model set to `low`.
   3. If neither yields a value, show just the model name.

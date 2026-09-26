@@ -1,5 +1,33 @@
 # Decisions Log
 
+## 2026-09-26 Saturday 10:06:48 +05:30 - Model+Effort reads stdin effort.level first; installed on this machine (Claude-Statusline, opus-helper)
+
+**Change (applies the proposed fix from the audit entry below, user-approved):** `modelEffortSegment` in `statusline.js` now picks effort in this order. (1) stdin `effort` present: use `effort.level`; an empty level shows the model name only. (2) `effort` absent but `thinking` present (Claude Code 2.1.119+, model has no effort setting): model name only, no transcript or settings read. (3) Both absent (Claude Code older than 2.1.119): the existing transcript tail-scan + normalized settings chain, unchanged. Model name parsing, `readEffortFromTranscript`, other segments, and the DIM color are unchanged. Only one sensible approach existed, so no options round.
+
+**Why:** stdin `effort.level` is the live per-session value (incl. session-only `max` and mid-session changes). The legacy chain almost never saw the session's own `/model` marker and fell to settings values shared by all sessions.
+
+**Install:** `node install.js` on this machine. Source and installed copy both sha256 `c8f34fea391fdd3347a085af66cddbb8380e61af660c42859c7942efe49cbcbe` (was: installed `6d3642...`, source `63b536...`). `settings.json` statusLine was already correct and not rewritten.
+
+**Verified (installed copy run whole with stdin fixtures, ANSI stripped):** a) `claude-opus-5-5`, `effort.level=max`, transcript marker says `low` -> `Opus 5.5:max`. b) `claude-opus-5-5[1m]`, `xhigh` -> `Opus 5.5:xhigh`. c) `claude-haiku-4-5-20251001`, no `effort`, `thinking.enabled=false` -> `Haiku 4.5`. d) legacy, no `effort`/`thinking`, transcript `C--Users-jsrat/f4eeabed` -> `Opus 5.5:low`, identical to the old build via a function-only harness. e) `effort.level=""` -> `Opus 5.5`. Extra legacy check without a transcript: old and new both `Opus 5.5:xhigh` (settings path). Timing, case a, 20 runs of the whole process: min 40.4 ms, median 41.5 ms, max 45.4 ms.
+
+**Docs updated:** `CLAUDE.md` (segment 6 text, stdin fields `effort.level` and `thinking.enabled`), `docs/wiki/segments.md`, `docs/wiki/settings-integration.md` (settings now legacy-only; the old "/effort is never written to settings" note marked outdated). Not committed.
+
+## 2026-09-26 Saturday 09:51:19 +05:30 - Model+Effort label right in one session, wrong in another: audit findings, no fix applied (Claude-Statusline, read-only audit)
+
+**Scope:** read-only. No edits to `statusline.js` (either copy), `install.js`, `settings.json`, `usage-cache.json`, or transcripts. Fixtures and harness live in the session scratchpad only. The source copy was exercised through a harness that evals its verbatim `readEffortFromTranscript` + `modelEffortSegment` text, because running the source file whole would fetch the usage API and write the project-dir `usage-cache.json` (stale since 2026-09-15). The installed copy was also run whole on two fixtures; output matched the harness and the cache mtime did not change.
+
+**Finding 1 (root, confirmed): Claude Code already pipes the live effort on stdin.** CHANGELOG 2.1.119: "Status line: stdin JSON now includes `effort.level` and `thinking.enabled`". This machine runs 2.1.283; its bundle builds the payload as `...LS(model)&&{effort:{level:gx(model,sessionEffortValue)}}` from the effective runtime model, and `effortValue` is in the statusline re-render trigger list. Docs (code.claude.com/docs/en/statusline): `effort.level` "Reflects the live session value, including mid-session /effort changes", absent when the model has no effort parameter. The transcript scan and settings fallback re-derive a value Claude Code already hands us, per session.
+
+**Finding 2 (confirmed): the transcript signal almost never reaches the scan.** 151 top-level transcripts since 2026-09-12: 146 exceed 256KB, 24 carry a genuine `/model` marker, only 4 have it inside the 256KB tail. `/model` usually runs first; each session's first turn then writes about 200KB of attachments (`skill_listing` 62K, `prompt_snapshot` 127-141K) before the first reply, so the marker (offset about 3-5KB) leaves the tail within one or two turns.
+
+**Finding 3 (confirmed): settings fallback is global, so sessions leak into each other.** `modelSettings[<model>]` holds whatever the most recent `/model` from any session saved; Claude Code normalizes `[1m]` away, so 200K and 1M variants share one key. Reproduced on the source build: `C--Users-jsrat/d55f9b96` (set `medium`) and `C--Users-jsrat/82c5d31e` (set `low`) render `xhigh`, because the orchestrator session saved `xhigh` at 09:42:20; `WORK-PwC-CLI/eee39ac8` (Fable 5.1 set `medium`) renders `low` from a later save. `max` is never written ("'max' is session-only and is not written" in the bundle), so the Ajoni session started at `max` at 09:42:40 renders `Opus 5.5:xhigh` on both builds. That pair (orchestrator right, Ajoni wrong, same minute) is the cleanest instance of the reported symptom.
+
+**Finding 4 (confirmed): this machine runs the pre-`[1m]`-fix build.** Installed sha256 `6d3642...` (2026-09-15), source `63b536...`. Any `claude-opus-5-5[1m]` id misses `modelSettings` and shows the stale global `effortLevel` (`medium`). The E: drive is a portable volume (label `T7`); the fix was installed on the office PC (its 2026-09-25 OneDrive config snapshot holds the `63b536...` copy), never on this machine.
+
+**Rejected:** model-name misparse (all resolved id shapes parse, incl. `[1m]`, Bedrock `us.anthropic.*`, date suffixes; aliases fall to `display_name`). Wrong-model effort (no sampled session switched model mid-session; latent only). Quoted-copy poisoning (no escaped marker copies in any sampled tail; suspicion only).
+
+**Proposed fix (not applied):** read `data.effort?.level` first. If `effort` is absent but `thinking` is present (same 2.1.119 release), the model has no effort parameter: show the model name only. Only when both are absent (Claude Code older than 2.1.119) fall back to the existing transcript + normalized settings chain. Zero dependencies, single file, and it removes the 256KB read from the hot path. Separately, run `node install.js` on this machine.
+
 ## 2026-09-23 Wednesday 12:16:23 +05:30 - Effort lookup fixed for [1m] model ids (Claude-Statusline session)
 
 **Symptom:** live bar showed `Opus 5.5:medium` while `settings.json` held `modelSettings["claude-opus-5-5"].effortLevel = "high"`.

@@ -302,8 +302,20 @@ function modelEffortSegment(data) {
   if (!modelName && displayName) modelName = displayName;
   if (!modelName) return null;
 
-  let effort = readEffortFromTranscript(data?.transcript_path);
-  if (!effort) {
+  // Claude Code 2.1.119+ sends the live per-session effort on stdin as
+  // effort.level (includes session-only "max" and mid-session changes).
+  // effort is absent when the model has no effort setting; thinking is
+  // always present on those builds, so thinking-without-effort means
+  // "show the model name only". Only builds older than 2.1.119 (neither
+  // field) fall back to the transcript marker and settings.json.
+  let effort = null;
+  if (data?.effort) {
+    effort = data.effort.level || null;
+  } else if (!data?.thinking) {
+    effort = readEffortFromTranscript(data?.transcript_path);
+  }
+  if (!effort && !data?.effort && !data?.thinking) {
+    // Legacy fallback (pre-2.1.119 only): saved default from settings.json
     try {
       const settingsPath = path.join(
         process.env.HOME || process.env.USERPROFILE,
