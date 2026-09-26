@@ -1,5 +1,17 @@
 # Decisions Log
 
+## 2026-09-26 Saturday 10:42:14 +05:30 - Effort fix pushed; setup prompts for other computers sent on Telegram (Claude-Statusline, opus-helper)
+
+**Fix committed and pushed.** Commit `9bed89da6652b6100d89c0aef1438083b44c89f5` on `origin/master` (5 files: `statusline.js`, `CLAUDE.md`, and 3 docs). Blob id of `statusline.js` at that commit: `28b03403f1c08c2292ef322c5a26825450bac703`. The untracked `.claude/` folder stays out of git.
+
+**Cross-machine check uses the git blob id, not a file sha256.** A Windows CRLF checkout changes the file sha256, so each prompt checks `git rev-parse HEAD:statusline.js` for the repo, and a local source-vs-installed sha256 compare only after `node install.js`.
+
+**Two paste-in prompts, one per computer type.** `statusline-update-existing-pc.md` (computers with the repo: find repo, stop on local `statusline.js` changes, `git pull --ff-only`, ancestor + blob check, back up settings.json, `node install.js`, verify). `statusline-fresh-setup-new-pc.md` (computer with nothing: prerequisites, clone or zip fallback, blob or contains check, backup, install, restart once). Both back up `~/.claude/settings.json` first because `install.js` rewrites an invalid settings.json from `{}`.
+
+**All helper commands are `node -e` with backtick JS strings inside single quotes.** This runs unchanged in PowerShell 7, Windows PowerShell 5.1, bash, and zsh (no double quotes, which PowerShell 5.1 mangles for native args). The fixture test feeds the installed copy two payloads and expects `Opus 5.5:max` and `Haiku 4.5`; it passed in bash, pwsh 7, and PowerShell 5.1 on this machine. A fresh clone of the pushed repo matched the blob id.
+
+**Delivery.** Both files saved on the Desktop and sent on Telegram as documents (message_id 75 and 76), after a text message that says which file is for which computer.
+
 ## 2026-09-26 Saturday 10:06:48 +05:30 - Model+Effort reads stdin effort.level first; installed on this machine (Claude-Statusline, opus-helper)
 
 **Change (applies the proposed fix from the audit entry below, user-approved):** `modelEffortSegment` in `statusline.js` now picks effort in this order. (1) stdin `effort` present: use `effort.level`; an empty level shows the model name only. (2) `effort` absent but `thinking` present (Claude Code 2.1.119+, model has no effort setting): model name only, no transcript or settings read. (3) Both absent (Claude Code older than 2.1.119): the existing transcript tail-scan + normalized settings chain, unchanged. Model name parsing, `readEffortFromTranscript`, other segments, and the DIM color are unchanged. Only one sensible approach existed, so no options round.
