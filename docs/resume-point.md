@@ -1,5 +1,31 @@
 # Resume Point
 
+## 2026-10-03 Saturday 18:14:15 +05:30 - Home PC install of status line + usage-footer mod (ad-hoc session)
+
+### What happened
+- Earlier session today (not closed): project scope widened to Claude Code mods. Built `mods/usage-footer` (desktop app usage line in the `SessionMode` slot), mod install in `install.js` (`env.CLAUDE_CODE_PLUGIN_DIRS`), `make-package.py` with `install.cmd` / `install.command` / `package/`, and `docs/HANDOFF.md`. CLAUDE.md updated.
+- This session: the user said "install". Ran HANDOFF section 2 on the home PC: `git pull` (up to date), `node install.js` (status line copied, mod copied to `~/.claude/mods/usage-footer`, plugin dir added), `claude plugin validate` passed (only warning: no author), `claude --version` 2.1.288.
+- The user confirmed the install is done on the home PC.
+- This close committed all the mod work (it was uncommitted until now). `.claude/agent-memory/` stays out of git on purpose.
+- Detail: `docs/decisions.md` entry 2026-10-03 Saturday 18:14:15 +05:30; wiki [[deployment]] section "Mods (desktop app)".
+
+### Next action
+- Office PC: plug in the T7 drive, open this project, say "install" (HANDOFF section 2), open a new session, check the footer.
+- Not yet seen: a screenshot of the footer in a new desktop session on the home PC.
+- After any change to a mod or installer: `python make-package.py` to rebuild the zip.
+- Still open from 2026-09-26: live `:max` check in the bar. The Telegram setup files for other PCs predate mods; use HANDOFF section 2 or the zip instead.
+
+### Backlog (unchanged)
+- Cost segment (`cost.total_cost_usd`)
+- `vim.mode` display when enabled
+- Weekly reset shows `3PM` for a real 3:30 PM reset
+
+### Known gotchas
+- Mods load only in a new session.
+- Desktop slots (2.1.288): `SessionMode` caps at about 30 characters; `AbovePrompt` gets a gray card; `PromptHint` is not drawn.
+- The E: drive is portable; the installed copies are not. Run `node install.js` on each machine.
+- Earlier status line gotchas: see the 2026-09-26 entry below and the wiki.
+
 ## 2026-09-26 Saturday 11:43:49 +05:30 - Effort now read from stdin effort.level; setup files for other PCs (Brain Mode session)
 
 ## What happened
@@ -41,20 +67,5 @@
 ## Next action
 - **Other machines:** `git pull` (to include `bc5de1a`) then `node install.js`, then check the effort suffix in a 1M-context Opus session matches `/model`.
 - Accepted limit: an effort set by launch flag (not `/model`) is invisible to the bar.
-
-## Previous session
-
-## 2026-09-15 Tuesday 17:37:41 +05:30 - Effort detection fixed (per-model settings key + backtick marker)
-
-## What happened
-- Bug: status line showed `Fable 5.1:medium` while `/model` had set Fable 5.1 to `low`. Audited read-only first, then fixed on approval.
-- Two defects. (1) The settings fallback read the global `settings.effortLevel` (`medium`) and ignored `settings.modelSettings["claude-fable-5-1"].effortLevel` (`low`) - this was the live cause. (2) The transcript regex only matched the old ANSI-bold marker; Claude Code builds from 2026-09-02 write the level in backticks instead.
-- Both fixed in `statusline.js` (regex accepts either delimiter, prefix budget 160 -> 200; fallback prefers the per-model key). 256KB tail left as-is on purpose.
-- Verified with four fixtures built from real transcript lines, all passing. Scan cost went 0.57 ms -> 0.50 ms, no regression. Installed via `node install.js`; source and installed copy match at sha256 `6d364276a91310087bee1914a2b9941bccd265eaa648a5fe6b3634bb83abdcd7`. Live render on this machine: `Fable 5.1:low`.
-- Docs updated: CLAUDE.md item 6, `docs/wiki/segments.md`, `docs/wiki/settings-integration.md` (the last one held a verbatim copy of the fixed line).
-
-## Next action
-- **Other machines still run the old build.** On each, `git pull` (to include this commit) then `node install.js`, then confirm the effort suffix matches what `/model` reports. Update 2026-09-15 Tuesday 18:10:05 +05:30: a handoff prompt for the home PC was sent to Telegram (text message and file update-statusline-effort-fix-prompt.txt) after the push landed; it does pull, commit check, node install.js, hash compare, live render. Paste it into a session on each remaining machine.
-- Optional, not done: `readEffortFromTranscript` still only sees the last 256KB. With the per-model settings fallback now correct this no longer produces a wrong value, so it was left alone deliberately.
 
 ## Previous session

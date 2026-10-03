@@ -1,6 +1,13 @@
 # Claude-Statusline
 
-Minimal, extensible status line for Claude Code. Zero dependencies, single Node.js file.
+Home project for all Claude Code customization. Two parts: <!-- updated: 2026-10-03 Saturday 14:35:42 +05:30 (project scope widened to Claude Code mods) -->
+- **Status line** (`statusline.js`): minimal, extensible status line for the Claude Code **CLI**. Zero dependencies, single Node.js file.
+- **Mods** (`mods/<name>/`): Claude Code plugins with function hooks, mainly for the Claude Code **Windows desktop app**; macOS is supported too. One folder per mod. New mods go here; never a new project.
+- **Install package**: `python make-package.py` builds `dist/claude-usage-line.zip` with `install.cmd` (Windows) and `install.command` (macOS). Rebuild after every change. Details: `docs/HANDOFF.md` section 2b. <!-- added: 2026-10-03 Saturday 14:41:08 +05:30 -->
+
+## Install trigger (read first) <!-- added: 2026-10-03 Saturday 14:35:42 +05:30 -->
+
+When the user says "install the latest one with what we already have", "install", "set it up on this PC", or "process the handoff": follow `docs/HANDOFF.md` section 2 without asking (`git pull`, `node install.js`, validate each mod, tell the user to open a new session). Full scope, mod details, and desktop app limits: `docs/HANDOFF.md`.
 
 ## Architecture
 
@@ -46,11 +53,19 @@ Segments are joined with a dim ` | ` separator.
      3. Both absent (Claude Code older than 2.1.119): legacy chain. Tail-scan the last 256KB of the transcript (`transcript_path`) for the marker `/model` writes: a `<local-command-stdout>Set model to ... with <level> effort` line. The level is wrapped in backticks (builds from 2026-09-02 on) or in ANSI bold stored as literal backslash-u001b escapes (older builds); the regex accepts both forms. Last match wins; a leading quote in the pattern filters out quoted copies of the marker in ordinary messages. Then fall back to `~/.claude/settings.json`, preferring the per-model key `modelSettings[<model.id>].effortLevel` (with any `[1m]` context tag stripped from the id first) over the global `effortLevel`.
    - Why stdin first: the `/model` marker usually leaves the 256KB tail within a turn or two, and the settings values are shared across all sessions (and never hold `max`), so the legacy chain showed another session's effort.
 
+## Mods (Claude Code plugins) <!-- added: 2026-10-03 Saturday 14:35:42 +05:30; replaces the earlier usage-footer section -->
+
+- Each mod is `mods/<name>/` with `.claude-plugin/plugin.json`, `hooks/hooks.json`, `hooks/register.tsx`. Load the `plugin-authoring` skill before writing one.
+- `node install.js` copies every mod to `~/.claude/mods/<name>` and adds it to `env.CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json`. New sessions load it.
+- Check a mod: `claude plugin validate mods/<name>`.
+- Mod 1: `usage-footer`, the usage line beside the model name in the desktop app (`c8 | 5h 18% 3h28m | w41/55`). Details and the desktop app limits: `docs/HANDOFF.md` sections 3-4.
+
 ## Deep Context
 
 | File | Purpose | Load When |
 |------|---------|-----------|
 | `docs/resume-point.md` | Session state, next actions | Session start |
+| `docs/HANDOFF.md` | Project scope, install steps, mods, desktop app limits | Install, new PC, any mod work |
 | `COMPETITIVE-AUDIT.md` | 11 projects, feature inventory, priority tiers | Planning new features |
 
 ## Adding a New Segment
@@ -116,7 +131,8 @@ This endpoint is tightly rate-limited. Fetch sparingly (every 5 min). On 429, us
 ## Rules
 
 - Zero npm dependencies. Always.
-- Single file (`statusline.js`). No build step.
+- Status line: single file (`statusline.js`). No build step.
+- Mods: one folder per mod under `mods/`, each self-contained. No build step (the engine compiles `.tsx`). <!-- added: 2026-10-03 Saturday 14:35:42 +05:30 -->
 - Must respond in <100ms (stdin timeout is 100ms).
 - No shared stdin cache between sessions (removed `cache.json`).
 - Usage API data cached to `usage-cache.json` (fetched every 5 min, global/shared is fine).
@@ -129,7 +145,7 @@ This project folder is the **source of truth**. To install or update on any PC:
 node install.js
 ```
 
-This copies `statusline.js` to `~/.claude/` and sets up `settings.json` automatically.
+This copies `statusline.js` to `~/.claude/`, copies every mod in `mods/` to `~/.claude/mods/<name>`, and sets up `settings.json` automatically (`statusLine`, and `env.CLAUDE_CODE_PLUGIN_DIRS` for the mods). Mods load in the next new session. <!-- updated: 2026-10-03 Saturday 14:35:42 +05:30 -->
 Cross-platform (Windows + Mac). Restart Claude Code once after a first install (new `statusLine` setting). Updates need no restart: each render spawns a fresh `node` process, so running sessions pick up the new copy on their next render. <!-- updated: 2026-09-26 Saturday 11:43:49 +05:30 -->
 
 The E: drive is portable (label `T7`) and moves between the home and office PCs. The repo travels with it; the installed `~/.claude/statusline.js` does not. After every fix, run `node install.js` on each machine. Check the code across machines with `git rev-parse HEAD:statusline.js` (blob id), not a file sha256: a Windows CRLF checkout changes the sha256. <!-- added: 2026-09-26 Saturday 11:43:49 +05:30 -->
@@ -149,8 +165,9 @@ On every session start, automatically read these files (if they exist):
 
 ## File Locations
 
-- Source (development): `statusline.js` (this project folder)
-- Installed copy: `~/.claude/statusline.js`
-- Config: `~/.claude/settings.json` (statusLine key)
+- Source (development): `statusline.js` and `mods/<name>/` (this project folder)
+- Installed copies: `~/.claude/statusline.js`, `~/.claude/mods/<name>/`
+- Config: `~/.claude/settings.json` (`statusLine` key, `env.CLAUDE_CODE_PLUGIN_DIRS`) <!-- updated: 2026-10-03 Saturday 14:35:42 +05:30 -->
+- Handoff (scope, install steps, mods): `docs/HANDOFF.md`
 - Cache: `usage-cache.json` (API only, in project dir on installed copy's dir)
 - Competitive audit: `COMPETITIVE-AUDIT.md` (11 projects, feature inventory, priority tiers)

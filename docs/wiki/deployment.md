@@ -41,3 +41,12 @@ After editing `statusline.js`, run `node install.js`. No restart is needed: Clau
 `install.js` only copies `statusline.js` for this reason.
 
 See also: [[architecture]] for the single-file rule.
+
+## Mods (desktop app)
+
+- `node install.js` also installs every `mods/<name>/` to `~/.claude/mods/<name>` and adds it to `env.CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json`.
+- Mods load only in a new session. Needs Claude Code 2.1.287 or later.
+- Check: `claude plugin validate ~/.claude/mods/<name>` must pass (an author warning is harmless).
+- Portable package: `python make-package.py` builds `dist/claude-usage-line.zip`. Rebuild after every change.
+- Status 2026-10-03 Saturday 18:14:15 +05:30: home PC installed; office PC pending.
+- Full steps, mod details, and desktop slot limits: `docs/HANDOFF.md`. See [[settings-integration]] and [[segments]].

@@ -3,3 +3,7 @@ usage-cache.json
 # macOS resource-fork metadata (created on non-HFS volumes like exFAT T7)
 ._*
 .DS_Store
+# Written by Claude Code when it loads a mod
+mods/*/.claude-plugin/types/
+# Built by make-package.py
+dist/

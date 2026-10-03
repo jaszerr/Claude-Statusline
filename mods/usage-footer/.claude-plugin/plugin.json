@@ -1,0 +1,6 @@
+{
+  "name": "usage-footer",
+  "version": "0.1.0",
+  "description": "Colored usage line (context, 5h, weekly + pace, Fable) in the prompt footer beside the model name",
+  "types": "./types/index.d.ts"
+}

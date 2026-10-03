@@ -1,0 +1,11 @@
+Install the Claude Code usage line from this folder on this computer (Windows or macOS).
+
+Steps:
+1. Read README.txt and docs/HANDOFF.md in this folder.
+2. Check that Node.js is installed (node --version) and that Claude Code is 2.1.287 or later (claude --version). If one is missing or too old, stop and tell me.
+3. Back up ~/.claude/settings.json if it exists (Windows: %USERPROFILE%\.claude\settings.json).
+4. Run: node install.js
+5. Run: claude plugin validate ~/.claude/mods/usage-footer
+   It must say "Validation passed".
+6. Show me what changed in settings.json (only statusLine and env.CLAUDE_CODE_PLUGIN_DIRS may change).
+7. Tell me to open a new session in the desktop app, and ask me for a screenshot of the prompt footer.

@@ -108,3 +108,13 @@
 **Effort transcript scan retargeted to the real marker.** Audit (Claude + Codex independently) proved the old `Set effort level to <level>` marker never appears in any transcript on this machine - the /effort skill is retired; effort changes go through /model, which writes `<local-command-stdout>Set model to ... with <level> effort` AND saves `effortLevel` to settings.json. New regex requires the JSONL-structural leading quote before `<local-command-stdout>` so quoted copies of the marker in chat/tool output can't poison the scan (this session's own transcript contains such copies and correctly doesn't match). Tail widened 64KB -> 256KB (runtime still ~45ms). Accepted limitation: a mid-session effort change older than 256KB of transcript falls back to settings - usually still correct because /model writes settings too; only wrong if another session changed the default afterward.
 
 **Codex delegation incident:** first run silently executed a stale 2-day-old instructions file because the Write tool resolves `/tmp` to `<cwd-drive>:/tmp` (E:/tmp) while Git Bash's `/tmp` is a different MSYS directory. Fix: always pass absolute Windows paths for `@file` dispatch. Filed to CC-Wiki `tools/claude-codex.md` and `~/.claude/lessons/codex.md`.
+
+## 2026-10-03 Saturday 18:14:15 +05:30 - Mods added to this project; usage-footer mod; home PC install (source: ad-hoc session)
+
+**Scope widened.** Claude-Statusline is now the single home for all Claude Code customization: the CLI status line (`statusline.js`) plus plugins under `mods/<name>/`. New mods go here, never a new project. Detail: `docs/HANDOFF.md` section 1.
+
+**usage-footer draws in `SessionMode`.** Slots tested on the Claude Code 2.1.288 desktop app: `SessionMode` (beside the model name) works but caps at about 30 characters, so the Fable weekly segment was dropped; `AbovePrompt` works but the app draws a gray card a mod cannot remove; `PromptHint` is not drawn on desktop at all. The CLI keeps `statusline.js`. Detail: HANDOFF sections 3-4.
+
+**Install path.** `install.js` copies each mod that has `.claude-plugin/plugin.json` to `~/.claude/mods/<name>` and adds it to `env.CLAUDE_CODE_PLUGIN_DIRS` (separator from `path.delimiter`). `make-package.py` builds a portable zip with `install.cmd` and `install.command`. The macOS installer is not yet tested on a real Mac.
+
+**Home PC install.** Done and validated this session. `claude plugin validate` gives one warning (no author field); accepted as harmless. Office PC still pending. Gotcha: mods load only in a NEW session, never in the session that ran the installer.
