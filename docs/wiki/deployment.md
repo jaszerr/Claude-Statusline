@@ -47,6 +47,7 @@ See also: [[architecture]] for the single-file rule.
 - `node install.js` also installs every `mods/<name>/` to `~/.claude/mods/<name>` and adds it to `env.CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json`.
 - Mods load only in a new session. Needs Claude Code 2.1.287 or later.
 - Check: `claude plugin validate ~/.claude/mods/<name>` must pass (an author warning is harmless).
+- usage-footer line budget (2026-10-05 Monday 14:53:42 +05:30): the `SessionMode` slot cuts at about 30 characters, so the line stays at 28 or fewer. Stale data adds one `~` (before `5h`, or before `w` when 5h is missing). Engine mode labels (`focus`, `memory paused`) show only when the line still fits. Only the full max (all values 100) reaches 32. See `docs/decisions.md` 2026-10-05.
 - Portable package: `python make-package.py` builds `dist/claude-usage-line.zip`. Rebuild after every change.
 - Status 2026-10-03 Saturday 18:14:15 +05:30: home PC installed; office PC pending.
 - Full steps, mod details, and desktop slot limits: `docs/HANDOFF.md`. See [[settings-integration]] and [[segments]].
