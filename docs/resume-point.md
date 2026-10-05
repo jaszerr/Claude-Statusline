@@ -1,5 +1,13 @@
 # Resume Point
 
+## 2026-10-05 Monday 14:49:24 +05:30 - usage-footer length fix (opus-helper-high, state only)
+
+### What changed
+- `mods/usage-footer/hooks/register.tsx`: stale data shows one `~` before `5h` (before `w` when 5h is missing). Mode labels show only when the line stays at 28 or fewer. countdown() guards an unparsable `resets_at`.
+- `docs/HANDOFF.md`: updated the `~` row, the section 4 length note, and the troubleshooting `~5h` row.
+- This PC: installed (`node install.js`) and the zip rebuilt (`python make-package.py`). Uncommitted. The new format loads only in new sessions.
+- Detail: `docs/decisions.md` entry 2026-10-05 Monday 14:49:24 +05:30.
+
 ## 2026-10-03 Saturday 18:14:15 +05:30 - Home PC install of status line + usage-footer mod (ad-hoc session)
 
 ### What happened

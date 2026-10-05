@@ -60,7 +60,7 @@ Shows usage beside the model name in the Claude Code desktop app (Windows; macOS
 | `5h 18% 3h28m` | 5-hour session 18% used, resets in 3h 28m | green under 50, yellow 50-74, red 75+ |
 | `w41/55` | week 41% used / pace 55% | green at/under pace, yellow up to pace +10, red beyond |
 | `\|` | separator | gray |
-| `~` before a number | data older than 10 minutes | |
+| `~` before `5h` (or before `w` when 5h is missing) | usage data older than 10 minutes | |
 | `c--` | no context reading yet (before the first reply) | gray |
 
 Pace (same as `statusline.js`): week start = weekly reset minus 168 hours; pace = hours passed / 168, as a whole percent.
@@ -83,7 +83,7 @@ How it works:
 | `AbovePrompt` (band above the input) | Works at full width, but the app draws a gray card around it. A mod cannot remove the card. |
 | `PromptHint` (line under the prompt) | Not drawn by the desktop app at all. |
 
-Keep the usage line under about 28 characters. The Fable weekly segment was dropped to fit.
+Keep the usage line at 28 characters or fewer. The Fable weekly segment was dropped to fit. Stale data adds one `~`. Mode labels show only when the line stays at 28 or fewer.
 
 ## 5. Add a new mod
 
@@ -98,7 +98,7 @@ Keep the usage line under about 28 characters. The Fable weekly segment was drop
 |---|---|
 | Line does not show | Open a new session. Check `env.CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json`. Run the validator. |
 | Line ends with "..." | The text is too long for the slot. Shorten a segment. |
-| Numbers show `~` | The usage API was not reached for 10+ minutes (rate limit or offline). It recovers by itself. |
+| Line shows `~5h` | The usage API was not reached for 10+ minutes (rate limit or offline). It recovers by itself. |
 | Settings broke after install | `install.js` only adds `statusLine` and `env.CLAUDE_CODE_PLUGIN_DIRS`; compare with a backup. |
 
 ## 7. Remove a mod

@@ -41,7 +41,7 @@ function computePace(week: Window | null, now: number) {
 
 function countdown(iso: string, now: number) {
   const mins = Math.floor((resetMs(iso) - now) / 60000)
-  if (mins <= 0) return null
+  if (!Number.isFinite(mins) || mins <= 0) return null // unparsable or past resets_at
   return `${Math.floor(mins / 60)}h${String(mins % 60).padStart(2, '0')}m`
 }
 
@@ -86,6 +86,10 @@ async function fetchUsage($: any) {
 // Draws the compact usage line for the footer slot beside the model name.
 // That slot caps at about 30 characters, so labels are one letter:
 // c8 | 5h 18% 3h28m | w41/55  (w = week used / pace).
+// Stale data (10+ min old) gets ONE `~`, before `5h` (or before `w` when the
+// 5h part is missing): c42 | ~5h 55% 1h01m | w51/83.
+// The engine's mode labels are added only when the whole line stays <= 28.
+const MAX_LINE = 28
 async function drawLine($: any, e: any) {
   const { Box, Text } = $.ui.resolve(e)
   await read($, tick) // redraw every minute so countdown and pace move
@@ -101,14 +105,19 @@ async function drawLine($: any, e: any) {
   if (u?.fiveHour) {
     const pct = Math.round(u.fiveHour.pct)
     const left = u.fiveHour.resetsAt ? countdown(u.fiveHour.resetsAt, now) : null
-    parts.push({ text: `5h ${stale}${pct}%${left ? ` ${left}` : ''}`, color: fixedColor(pct) })
+    parts.push({ text: `${stale}5h ${pct}%${left ? ` ${left}` : ''}`, color: fixedColor(pct) })
   }
   if (u?.week) {
     const pct = Math.round(u.week.pct)
-    parts.push({ text: `w${stale}${pct}${p ? `/${p.pace}` : ''}`, color: paceColor(pct, p?.pace ?? null) })
+    const mark = u.fiveHour ? '' : stale // keep the stale signal when 5h is missing
+    parts.push({ text: `${mark}w${pct}${p ? `/${p.pace}` : ''}`, color: paceColor(pct, p?.pace ?? null) })
   }
   const modes = e.props.modes
-  if (modes.length > 0) parts.push({ text: modes.join(' & ') })
+  if (modes.length > 0) {
+    const text = modes.join(' & ')
+    const len = parts.reduce((n, part) => n + part.text.length + SEP.length, text.length)
+    if (len <= MAX_LINE) parts.push({ text })
+  }
 
   // Separators are sibling Texts (a dim Text nested in a colored one takes
   // the parent's color on desktop), padded with no-break spaces (HTML

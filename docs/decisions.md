@@ -1,5 +1,17 @@
 # Decisions Log
 
+## 2026-10-05 Monday 14:49:24 +05:30 - usage-footer: one stale `~`, mode labels only when they fit (Claude-Statusline, opus-helper-high)
+
+**Symptom:** the desktop usage line ended in "..." for part of the morning. Today's line `c8 | 5h 55% 1h01m | w51/83` is 26 characters.
+
+**Cause (no bug found):** ordinary values made the line longer. Sessions from 10:30 to 12:30 IST had 2-digit context (c13-c24, from transcript token counts on the 1M window) [verified]. Stale data put `~` on both usage parts: `c42 | 5h ~55% 1h01m | w~51/83` is 29 [stale assumed, no logs]. Any engine mode label adds 8 or more (`memory paused` makes 42).
+
+**Decision (user chose option A):** one `~` before `5h` only, or before `w` when the 5h part is missing. Mode labels are added only when the whole line stays at 28 or fewer (`MAX_LINE`). countdown() returns null for an unparsable `resets_at` (`Number.isFinite` guard; before, it showed `NaNhNaNm`). Rejected: drop the `m` from the countdown (option B), and dim colors in place of `~` (option C).
+
+**Lengths before -> after (real code, node harness):** c42 stale 29 -> 28; c99/99%/w99/99 stale 29 -> 28; full max (c100, 100%, w100/100, stale) 33 -> 32; today 26 -> 26; mode on the long line 34/42/48 -> 26 (label left out). The full max can still cut, but only at 100% context.
+
+**Done:** edited `mods/usage-footer/hooks/register.tsx` and `docs/HANDOFF.md`. `claude plugin validate` passed (1 warning). Ran `node install.js` and `python make-package.py`. The installed register.tsx matches the repo (blob `ea14e42235dc43814966a8f540bcfc4869f55264`). Not committed.
+
 ## 2026-09-26 Saturday 10:42:14 +05:30 - Effort fix pushed; setup prompts for other computers sent on Telegram (Claude-Statusline, opus-helper)
 
 **Fix committed and pushed.** Commit `9bed89da6652b6100d89c0aef1438083b44c89f5` on `origin/master` (5 files: `statusline.js`, `CLAUDE.md`, and 3 docs). Blob id of `statusline.js` at that commit: `28b03403f1c08c2292ef322c5a26825450bac703`. The untracked `.claude/` folder stays out of git.
