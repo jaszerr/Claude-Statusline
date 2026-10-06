@@ -13,6 +13,8 @@ const tick = atom({ plugin: 'usage-footer', key: 'tick' } as const, 0)
 
 const USAGE_URL = 'https://api.anthropic.com/api/oauth/usage'
 const FETCH_EVERY = 5 * 60 * 1000 // endpoint is tightly rate-limited
+const RATE_LIMIT_BACKOFF = 10 * 60 * 1000 // floor on 429; Retry-After wins if longer
+const ERROR_BACKOFF = 2 * 60 * 1000
 const STALE_AFTER = 10 * 60 * 1000
 const HOUR = 3600000
 const NBSP = String.fromCharCode(160) // HTML collapses repeated plain spaces
@@ -51,10 +53,15 @@ const toWindow = (w: any): Window | null =>
     : null
 
 let lastFetch = 0
+let nextAllowed = 0
+// The line is drawn on desktop only, so terminal sessions (where the
+// statusLine command already fetches) never call the rate-limited endpoint.
+let onDesktop = false
 
 async function fetchUsage($: any) {
+  if (!onDesktop) return
   const now = await $.clock.now()
-  if (now - lastFetch < FETCH_EVERY - 5000) return
+  if (now < nextAllowed || now - lastFetch < FETCH_EVERY - 5000) return
   lastFetch = now
   try {
     const auth = await $.session.authorize()
@@ -63,7 +70,12 @@ async function fetchUsage($: any) {
       auth: auth.handle,
       headers: { Accept: 'application/json', 'anthropic-beta': 'oauth-2025-04-20' },
     })
-    if (!res.ok) return // 429 etc: keep the stale data
+    if (!res.ok) {
+      // 429 etc: keep the stale data and back off
+      const retryAfterMs = (parseInt(res.headers?.['retry-after'], 10) || 0) * 1000
+      nextAllowed = now + (res.status === 429 ? Math.max(RATE_LIMIT_BACKOFF, retryAfterMs) : ERROR_BACKOFF)
+      return
+    }
     const body = JSON.parse(res.text)
     const scoped = Array.isArray(body.limits)
       ? body.limits.find((l: any) => l.kind === 'weekly_scoped' && l.scope?.model)
@@ -80,6 +92,7 @@ async function fetchUsage($: any) {
     await update($, usage, () => next)
   } catch {
     // network or JSON error: keep the stale data
+    nextAllowed = now + ERROR_BACKOFF
   }
 }
 
@@ -176,6 +189,10 @@ export const register: Register = on => {
   // desktop app does not draw it).
   on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
     if (e.surface !== 'desktop') return next(e)
+    if (!onDesktop) {
+      onDesktop = true
+      void fetchUsage($)
+    }
     return drawLine($, e)
   })
 }

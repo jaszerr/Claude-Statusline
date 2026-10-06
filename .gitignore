@@ -1,4 +1,5 @@
 usage-cache.json
+usage-fetch-gate.json
 .launcher-*
 # macOS resource-fork metadata (created on non-HFS volumes like exFAT T7)
 ._*

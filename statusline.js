@@ -10,8 +10,16 @@ const USAGE_CACHE_FILE = path.join(__dirname, "usage-cache.json");
 const CREDS_FILE = path.join(process.env.HOME || process.env.USERPROFILE, ".claude", ".credentials.json");
 const KEYCHAIN_SERVICE = "Claude Code-credentials";
 
+// Shared across every session: the earliest time any render may call the API
+const FETCH_GATE_FILE = path.join(__dirname, "usage-fetch-gate.json");
+
 // How often to call the usage API (ms)
 const USAGE_FETCH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+// Backoff after a failed call. Without it, every render of every open session
+// retries while the cache is stale, which keeps the endpoint returning 429.
+const RATE_LIMIT_BACKOFF = 10 * 60 * 1000; // floor on 429; Retry-After wins if longer
+const ERROR_BACKOFF = 2 * 60 * 1000;
+const IN_FLIGHT_HOLD = 60 * 1000; // claim the gate so parallel renders do not all fire
 
 // ANSI color codes
 const GREEN = "\x1b[32m";
@@ -38,7 +46,24 @@ function writeUsageCache(data) {
   }
 }
 
+function readFetchGate() {
+  try {
+    return JSON.parse(fs.readFileSync(FETCH_GATE_FILE, "utf8")).nextAllowedAt || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function setFetchGate(delayMs) {
+  try {
+    fs.writeFileSync(FETCH_GATE_FILE, JSON.stringify({ nextAllowedAt: Date.now() + delayMs }));
+  } catch {
+    // silent
+  }
+}
+
 function shouldFetchUsage() {
+  if (Date.now() < readFetchGate()) return false;
   const cached = readUsageCache();
   if (!cached || !cached._fetchedAt) return true;
   return Date.now() - cached._fetchedAt > USAGE_FETCH_INTERVAL;
@@ -76,6 +101,7 @@ function fetchUsage() {
   const token = getOAuthToken();
   if (!token) return;
 
+  setFetchGate(IN_FLIGHT_HOLD);
   const req = https.get("https://api.anthropic.com/api/oauth/usage", {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -90,14 +116,22 @@ function fetchUsage() {
       if (res.statusCode === 200) {
         try {
           writeUsageCache(JSON.parse(body));
+          setFetchGate(0);
+          return;
         } catch {
-          // bad JSON, skip
+          // bad JSON, fall through to backoff
         }
       }
-      // On 429 or other errors, keep stale cache (do nothing)
+      // On 429 or other errors, keep stale cache and back off
+      if (res.statusCode === 429) {
+        const retryAfterMs = (parseInt(res.headers["retry-after"], 10) || 0) * 1000;
+        setFetchGate(Math.max(RATE_LIMIT_BACKOFF, retryAfterMs));
+      } else {
+        setFetchGate(ERROR_BACKOFF);
+      }
     });
   });
-  req.on("error", () => {}); // silent
+  req.on("error", () => setFetchGate(ERROR_BACKOFF));
   req.on("timeout", () => req.destroy());
 }
 
