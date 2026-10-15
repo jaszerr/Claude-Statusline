@@ -85,6 +85,20 @@ How it works:
 
 Keep the usage line at 28 characters or fewer. The Fable weekly segment was dropped to fit. Stale data adds one `~`. Mode labels show only when the line stays at 28 or fewer.
 
+### Update: Claude Code 2.1.300 (2026-10-15 Thursday 11:50:38 +05:30)
+
+The desktop app update moved the `SessionMode` slot. Tested with a probe mod and screenshots:
+
+| Spot | Result on 2.1.300 |
+|---|---|
+| `SessionMode` | Drawn on its own row UNDER the model name, right-aligned. No longer beside it. The full line showed without "...". |
+| `SessionMode` with `position="absolute"` and negative `top` | Ignored on desktop. The line stays on its own row. A mod cannot lift it next to the model name. |
+| `SessionMode` with a 3-character line (`c10`) | Still on its own row under the model name. Width is not the cause. |
+| `AbovePrompt` | Same as 2.1.288: gray card above the input. |
+| `PromptHint` | Same as 2.1.288: not drawn. |
+
+No mod slot sits beside the model name on 2.1.300. The line stays in `SessionMode`. Test note: a second mod's `SessionMode` hook never runs, because usage-footer draws the slot without calling `next(e)`.
+
 ## 5. Add a new mod
 
 1. Make `mods/<new-name>/` with `.claude-plugin/plugin.json`, `hooks/hooks.json`, and `hooks/register.tsx` (load the `plugin-authoring` skill first; it has the API types for the running build).

@@ -1,5 +1,19 @@
 # Decisions Log
 
+## 2026-10-15 Thursday 11:56:34 +05:30 - usage-footer stays on the row under the model name (Claude Code 2.1.300, Windows desktop app)
+
+**Symptom:** after the desktop app update, the usage line shows on its own row under "Opus 5.5 Medium", not beside it.
+
+**Tests (screenshots, Windows desktop, Claude Code 2.1.300):**
+- Probe mod in `PromptHint` and `AbovePrompt`: AbovePrompt is still a gray card above the input; PromptHint is still not drawn.
+- `position="absolute"` with `top={-1}` in the usage-footer `SessionMode` tree: ignored on desktop, the line did not move.
+- A 3-character line (`c10`): still on the lower row, so width is not the cause.
+- The permission label ("Auto", "Bypass permissions") and the whole model row are drawn by the app; none of the 15 `ui.render` components sits there.
+
+**Decision (user):** keep the line where it is ("ok done leave it"). The lift change was reverted and reinstalled; no code change was committed. Results are in `docs/HANDOFF.md` section 4 (Update: Claude Code 2.1.300). Only an app update from Anthropic can move it.
+
+**Rejected:** lift with absolute position, AbovePrompt gray card, side pane, toasts.
+
 ## 2026-10-05 Monday 14:49:24 +05:30 - usage-footer: one stale `~`, mode labels only when they fit (Claude-Statusline, opus-helper-high)
 
 **Symptom:** the desktop usage line ended in "..." for part of the morning. Today's line `c8 | 5h 55% 1h01m | w51/83` is 26 characters.

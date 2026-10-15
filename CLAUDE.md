@@ -154,6 +154,13 @@ Manual alternative:
 1. Copy `statusline.js` to `~/.claude/statusline.js`
 2. Ensure `settings.json` has: `"statusLine": { "type": "command", "command": "node ~/.claude/statusline.js" }`
 
+## Lessons (repeated mistakes)
+
+<!-- added 2026-10-11 Sunday 12:54:01 +05:30: per-project lessons file -->
+Repeated mistakes to avoid. Keep `LESSONS.md` under 30 lines.
+
+@LESSONS.md
+
 ## Session Start Checklist
 
 On every session start, automatically read these files (if they exist):

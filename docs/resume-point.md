@@ -1,5 +1,23 @@
 # Resume Point
 
+## 2026-10-15 Thursday 11:56:34 +05:30 - Session close: desktop 2.1.300 moved the usage line (Windows)
+
+### What happened
+- After the app update (Claude Code 2.1.300), the usage-footer line sits on its own row under the model name.
+- Tested with a hot-reload probe mod and screenshots: no mod spot on the model row; absolute position ignored; short line still below; AbovePrompt is a gray card; PromptHint not drawn.
+- The user chose to leave it there. The lift test code was reverted; installed copy matches the repo. Probe mod deleted. Zip rebuilt.
+- Docs: `docs/HANDOFF.md` section 4 (2.1.300 table), `docs/decisions.md` (this date), wiki [[deployment]].
+
+### Next action
+- Office PC: `git pull`, then `node install.js` (HANDOFF section 2). No code change this session.
+- After each desktop app update, check if the slot moved back beside the model name.
+- Still open: CLI cache vs desktop footer numbers (another account's token?); computePace NaN guard in register.tsx.
+
+### Known gotchas
+- usage-footer is loaded through `CLAUDE_CODE_PLUGIN_DIRS`, so an edit needs a new session; hot reload covers only the session's dev-mods folder.
+- Mac desktop layout on 2.1.300 not tested.
+
+
 ## 2026-10-05 Monday 14:53:42 +05:30 - Session close: usage-footer truncation fix (Brain Mode session)
 
 ### What happened
@@ -26,29 +44,3 @@
 - `docs/HANDOFF.md`: updated the `~` row, the section 4 length note, and the troubleshooting `~5h` row.
 - This PC: installed (`node install.js`) and the zip rebuilt (`python make-package.py`). Uncommitted. The new format loads only in new sessions.
 - Detail: `docs/decisions.md` entry 2026-10-05 Monday 14:49:24 +05:30.
-
-## 2026-10-03 Saturday 18:14:15 +05:30 - Home PC install of status line + usage-footer mod (ad-hoc session)
-
-### What happened
-- Earlier session today (not closed): project scope widened to Claude Code mods. Built `mods/usage-footer` (desktop app usage line in the `SessionMode` slot), mod install in `install.js` (`env.CLAUDE_CODE_PLUGIN_DIRS`), `make-package.py` with `install.cmd` / `install.command` / `package/`, and `docs/HANDOFF.md`. CLAUDE.md updated.
-- This session: the user said "install". Ran HANDOFF section 2 on the home PC: `git pull` (up to date), `node install.js` (status line copied, mod copied to `~/.claude/mods/usage-footer`, plugin dir added), `claude plugin validate` passed (only warning: no author), `claude --version` 2.1.288.
-- The user confirmed the install is done on the home PC.
-- This close committed all the mod work (it was uncommitted until now). `.claude/agent-memory/` stays out of git on purpose.
-- Detail: `docs/decisions.md` entry 2026-10-03 Saturday 18:14:15 +05:30; wiki [[deployment]] section "Mods (desktop app)".
-
-### Next action
-- Office PC: plug in the T7 drive, open this project, say "install" (HANDOFF section 2), open a new session, check the footer.
-- Not yet seen: a screenshot of the footer in a new desktop session on the home PC.
-- After any change to a mod or installer: `python make-package.py` to rebuild the zip.
-- Still open from 2026-09-26: live `:max` check in the bar. The Telegram setup files for other PCs predate mods; use HANDOFF section 2 or the zip instead.
-
-### Backlog (unchanged)
-- Cost segment (`cost.total_cost_usd`)
-- `vim.mode` display when enabled
-- Weekly reset shows `3PM` for a real 3:30 PM reset
-
-### Known gotchas
-- Mods load only in a new session.
-- Desktop slots (2.1.288): `SessionMode` caps at about 30 characters; `AbovePrompt` gets a gray card; `PromptHint` is not drawn.
-- The E: drive is portable; the installed copies are not. Run `node install.js` on each machine.
-- Earlier status line gotchas: see the 2026-09-26 entry below and the wiki.
