@@ -1,5 +1,21 @@
 # Decisions Log
 
+## 2026-10-16 Friday 23:41:39 +05:30 - Desktop `/` menu: most-used commands first is NOT possible with a mod; command-usage mod built and removed
+
+**Ask:** the `/` menu in the Windows desktop app should list the most used commands from top to bottom. The CLI menu is fine.
+
+**Options weighed:** (1) hide rarely used commands with `command.describe` `isHidden` (chosen); (2) add use counts to descriptions (rejected: the order stays the same, and the desktop shows descriptions only in a tooltip); (3) `/feedback` request to Anthropic (the only real fix).
+
+**Built:** `mods/command-usage` counted runs in `$.store`, hid every command outside the top 15 (warm-up 25 runs), hid only in the desktop app (CLI counts only), and seeded counts from the last 90 days of `~/.claude/history.jsonl` through `scripts/seed.js` at install. Commits c45e471, c8d6bac, 3b0ef88.
+
+**Failed attempts, in order:**
+- Desktop check by `$.session.surfaces()`: at the first listing the `desktop` surface has not attached yet, so nothing was hidden. Fixed with `CLAUDE_CODE_ENTRYPOINT=claude-desktop`.
+- Then a debug log in the installed mod proved it answered `isHidden: true` for `schedule`, `btw`, `ultrareview`, `rewind`, `fork`, `sandbox` and about 500 more in a fresh session, and the screenshot still showed them all. A hot-loaded probe that hid 6 commands gave the same result.
+
+**Decision:** the desktop app ignores `isHidden`, and no mod can reorder its menu. The mod, the install.js seed step and its .gitignore line were removed (commit f7799fe). Do not try again; only Anthropic can add it.
+
+**Process mistake:** two early "it works" results were answer buttons I had written, which the user clicked. Lesson in `LESSONS.md`.
+
 ## 2026-10-15 Thursday 11:56:34 +05:30 - usage-footer stays on the row under the model name (Claude Code 2.1.300, Windows desktop app)
 
 **Symptom:** after the desktop app update, the usage line shows on its own row under "Opus 5.5 Medium", not beside it.

@@ -1,5 +1,25 @@
 # Resume Point
 
+## 2026-10-16 Friday 23:41:39 +05:30 - Session close: desktop `/` menu by use is not possible (command-usage mod built and removed)
+
+### What happened
+- Ask: the Windows desktop `/` menu should show the most used commands first.
+- Built `mods/command-usage` (count runs, hide all but the top 15 in the desktop app, seed from CLI history). Fixed the desktop check (`CLAUDE_CODE_ENTRYPOINT`).
+- A debug log plus screenshots proved the app ignores `isHidden`. A mod cannot reorder the menu either. Mod removed from repo, `~/.claude/mods`, `CLAUDE_CODE_PLUGIN_DIRS` and the store; install.js seed step reverted. Zip rebuilt.
+- Notes: CLAUDE.md (one-line rule), `docs/HANDOFF.md` section 3b, `docs/decisions.md`, wiki [[deployment]], `LESSONS.md` (1 lesson). Commits up to f7799fe, pushed.
+
+### Next action
+- Office PC: `git pull`, then `node install.js` (HANDOFF section 2). This also drops command-usage there if it was installed.
+- Optional: send `/feedback` in the desktop app asking to sort the `/` menu by use.
+- Still open: CLI cache vs desktop footer numbers (another account's token?); computePace NaN guard in register.tsx.
+
+### Known gotchas
+- Desktop `/` menu: the engine asks `command.describe` for every command at the first message, but the app ignores the answer. Before the first message no mod runs at all.
+- Never count a prewritten answer button as test proof; ask for a screenshot or read a log.
+- Auto mode gave no verdict on the Edit tool for several edits; Bash edits passed their own check. A mod in dev-mods loads only after the user answers the hot-reload question.
+
+
+
 ## 2026-10-15 Thursday 11:56:34 +05:30 - Session close: desktop 2.1.300 moved the usage line (Windows)
 
 ### What happened
@@ -36,11 +56,3 @@
 - The mod keeps usage data in per-session memory only; nothing is on disk. After an app restart, all sessions poll on the same 5-minute timer, so one rate limit can make every line stale at once.
 - The full max line (c100, ~5h 100% 4h59m, w100/100) is 32 characters and can still cut.
 
-
-## 2026-10-05 Monday 14:49:24 +05:30 - usage-footer length fix (opus-helper-high, state only)
-
-### What changed
-- `mods/usage-footer/hooks/register.tsx`: stale data shows one `~` before `5h` (before `w` when 5h is missing). Mode labels show only when the line stays at 28 or fewer. countdown() guards an unparsable `resets_at`.
-- `docs/HANDOFF.md`: updated the `~` row, the section 4 length note, and the troubleshooting `~5h` row.
-- This PC: installed (`node install.js`) and the zip rebuilt (`python make-package.py`). Uncommitted. The new format loads only in new sessions.
-- Detail: `docs/decisions.md` entry 2026-10-05 Monday 14:49:24 +05:30.
