@@ -29,6 +29,13 @@ async function importSeed($: Api): Promise<number | null> {
   return Object.values(seed).reduce((a, b) => a + (Number(b) || 0), 0)
 }
 
+// The desktop app sets CLAUDE_CODE_ENTRYPOINT before the first menu listing;
+// its surface attaches later, so the roster alone misses that listing.
+async function isDesktop($: Api): Promise<boolean> {
+  if ((await $.env.get('CLAUDE_CODE_ENTRYPOINT')) === 'claude-desktop') return true
+  return (await $.session.surfaces()).includes('desktop')
+}
+
 export const register: Register = (on, options) => {
   const keep = Math.max(1, Number(options.keep ?? 15))
   const warmup = Math.max(0, Number(options.warmup ?? 25))
@@ -74,7 +81,9 @@ export const register: Register = (on, options) => {
 
   on('command.describe', async ($, e, next) => {
     const out = await next(e)
-    if (!(await $.session.surfaces()).includes('desktop')) return out
+    if (!(await isDesktop($))) return out
+    // The first listing can come before session.start: seed here too.
+    if ((await $.store.get('seededAt')) === undefined) await importSeed($)
     const shown = visible(asCounts(await $.store.get('counts')), (await $.store.get('showAll')) === true)
     return shown && !shown.has(e.command) ? { ...out, isHidden: true } : out
   }).catch(($, e, next) => next(e))
@@ -100,12 +109,12 @@ export const register: Register = (on, options) => {
     const counts = asCounts(await $.store.get('counts'))
     const total = Object.values(counts).reduce((a, b) => a + b, 0)
     const showAll = (await $.store.get('showAll')) === true
-    const isDesktop = (await $.session.surfaces()).includes('desktop')
-    const shown = isDesktop ? visible(counts, showAll) : null
+    const inApp = await isDesktop($)
+    const shown = inApp ? visible(counts, showAll) : null
     const rows = Object.entries(counts)
       .sort((a, b) => b[1] - a[1])
       .map(([name, n]) => `${shown && !shown.has(name) ? '  (hidden) ' : '  '}/${name}  ${n}`)
-    const state = !isDesktop
+    const state = !inApp
       ? 'Counting only: the / menu hides commands in the desktop app, not here.'
       : showAll
         ? 'Hiding is off (/cmd-usage all turns it on).'

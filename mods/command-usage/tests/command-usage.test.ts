@@ -6,10 +6,14 @@ const engine = { plugin: 'engine', tier: 'core' } as const
 
 // The engine's own behaviour beneath the plugin: a command prints nothing,
 // a description comes back as given, the store is a Map.
-function bottom(on: On, surfaces: readonly ('terminal' | 'desktop')[] = ['desktop']) {
+type Setup = { surfaces?: readonly ('terminal' | 'desktop')[]; entrypoint?: string; seed?: boolean }
+
+function bottom(on: On, { surfaces = ['desktop'], entrypoint, seed = false }: Setup = {}) {
   on('session.surfaces', () => ({ value: surfaces }))
-  on('fs.read', ($, e) => {
-    if (!e.path.endsWith('seed-counts.json')) throw new Error('ENOENT')
+  on('env.get', () => ({ value: entrypoint }))
+  on('ui.invalidate', () => ({ value: undefined }))
+  on('fs.read', () => {
+    if (!seed) throw new Error('ENOENT')
     return { value: JSON.stringify({ days: 90, counts: { 'end-session': 366, brain: 295, model: 1 } }) }
   })
   const store = new Map<string, unknown>()
@@ -49,7 +53,7 @@ describe('command-usage', () => {
     await run($, 'model')
     await run($, 'model')
     await run($, 'effort')
-    expect(await hidden($, 'model')).toBe(false)
+    expect(await hidden($, 'model')).toBe(false) // not the desktop: nothing hidden
     expect(await hidden($, 'effort')).toBe(true)
     expect(await hidden($, 'sandbox')).toBe(true)
     expect(await hidden($, 'cmd-usage')).toBe(false)
@@ -74,7 +78,7 @@ describe('command-usage', () => {
   })
 
   test('the CLI counts but hides nothing', small, async ($, on) => {
-    bottom(on, ['terminal'])
+    bottom(on, { surfaces: ['terminal'] })
     for (const c of ['model', 'model', 'effort']) await run($, c)
     expect(await hidden($, 'effort')).toBe(false)
     expect(await hidden($, 'sandbox')).toBe(false)
@@ -84,15 +88,20 @@ describe('command-usage', () => {
   })
 
   test('import merges the CLI history counts, larger number wins', small, async ($, on) => {
-    bottom(on)
+    bottom(on, { surfaces: ['terminal'], seed: true })
     for (const c of ['model', 'model', 'effort']) await run($, c)
     const { text } = await run($, 'cmd-usage', 'import')
     expect(text).toContain('Imported 662 runs')
     const list = (await run($, 'cmd-usage')).text
     expect(list).toContain('/end-session  366')
     expect(list).toContain('/model  2')
+    expect(await hidden($, 'model')).toBe(false) // not the desktop: nothing hidden
+  })
+
+  test('the desktop entrypoint hides before the surface attaches; the first listing seeds', small, async ($, on) => {
+    bottom(on, { surfaces: [], entrypoint: 'claude-desktop', seed: true })
     expect(await hidden($, 'end-session')).toBe(false)
-    expect(await hidden($, 'model')).toBe(true)
+    expect(await hidden($, 'sandbox')).toBe(true)
   })
 
   test('/cmd-usage lists counts and reset clears them', small, async ($, on) => {
