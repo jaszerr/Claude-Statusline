@@ -99,6 +99,16 @@ The desktop app update moved the `SessionMode` slot. Tested with a probe mod and
 
 No mod slot sits beside the model name on 2.1.300. The line stays in `SessionMode`. Test note: a second mod's `SessionMode` hook never runs, because usage-footer draws the slot without calling `next(e)`.
 
+## 3b. Mod 2: command-usage (short / menu, desktop app only) <!-- added: 2026-10-16 Friday 22:57:46 +05:30 -->
+
+- Goal: the `/` menu in the Windows desktop app shows the commands Jaspal uses most. The CLI menu has no problem, so the CLI is left alone. A mod CANNOT reorder the menu (the app sets the order; `command.describe` only changes the description or hides a command; `prompt.autocomplete` rows draw below the app's rows). So the mod hides the rarely used commands instead.
+- How: a `command.run` hook counts each run in `$.store` (`counts`, kept across sessions; CLI and desktop runs both count; plugin-made runs do not). A `command.describe` hook sets `isHidden` on every command outside the top `keep`, but only when `$.session.surfaces()` includes `desktop`. A `session.attach` hook for `desktop` re-lists the menu, in case the app attaches after the first listing.
+- A hidden command still runs when typed in full, but it does not show when you filter the menu either.
+- Options (`userConfig`): `keep` (15), `warmup` (25 total runs before anything is hidden), `alwaysShow` (comma list).
+- `/cmd-usage` lists the counts. `/cmd-usage all` turns hiding off or on. `/cmd-usage reset` clears the counts.
+- Tested on desktop 2.1.299 with a probe mod: the desktop menu respects `isHidden`, and `command.run` fires for `/model` and `/effort`. Tests: `claude plugin test mods/command-usage` (6 pass).
+- The visible commands keep the app's own order among themselves.
+
 ## 5. Add a new mod
 
 1. Make `mods/<new-name>/` with `.claude-plugin/plugin.json`, `hooks/hooks.json`, and `hooks/register.tsx` (load the `plugin-authoring` skill first; it has the API types for the running build).

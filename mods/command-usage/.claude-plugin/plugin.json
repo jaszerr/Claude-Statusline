@@ -1,0 +1,25 @@
+{
+  "name": "command-usage",
+  "version": "0.1.0",
+  "description": "Counts the slash commands you run and hides the rarely used ones from the / menu",
+  "userConfig": {
+    "keep": {
+      "type": "number",
+      "title": "Commands to keep",
+      "description": "How many of your most used commands the / menu shows",
+      "default": 15
+    },
+    "warmup": {
+      "type": "number",
+      "title": "Warm-up runs",
+      "description": "Hide nothing until you have run this many commands in total",
+      "default": 25
+    },
+    "alwaysShow": {
+      "type": "string",
+      "title": "Always show",
+      "description": "Comma-separated command names that are never hidden",
+      "default": ""
+    }
+  }
+}
