@@ -105,8 +105,9 @@ No mod slot sits beside the model name on 2.1.300. The line stays in `SessionMod
 - How: a `command.run` hook counts each run in `$.store` (`counts`, kept across sessions; CLI and desktop runs both count; plugin-made runs do not). A `command.describe` hook sets `isHidden` on every command outside the top `keep`, but only when `$.session.surfaces()` includes `desktop`. A `session.attach` hook for `desktop` re-lists the menu, in case the app attaches after the first listing.
 - A hidden command still runs when typed in full, but it does not show when you filter the menu either.
 - Options (`userConfig`): `keep` (15), `warmup` (25 total runs before anything is hidden), `alwaysShow` (comma list).
-- `/cmd-usage` lists the counts. `/cmd-usage all` turns hiding off or on. `/cmd-usage reset` clears the counts.
-- Tested on desktop 2.1.299 with a probe mod: the desktop menu respects `isHidden`, and `command.run` fires for `/model` and `/effort`. Tests: `claude plugin test mods/command-usage` (6 pass).
+- `/cmd-usage` lists the counts. `/cmd-usage all` turns hiding off or on. `/cmd-usage reset` clears the counts. `/cmd-usage import` merges the seed again.
+- Seed (updated: 2026-10-16 Friday 23:06:50 +05:30): `install.js` runs `scripts/seed.js` (any mod may ship one) after the copy. It counts slash commands in `~/.claude/history.jsonl` (CLI history, last 90 days) into `~/.claude/mods/command-usage/seed-counts.json`. The mod merges it once at its first session start (`seededAt` in `$.store`; larger number wins), so the short menu works from day one. The mod cannot read history.jsonl itself: it is over the 4 MiB `$.fs.read` limit. The seed file is per PC and git-ignored.
+- Tested on desktop 2.1.299 with a probe mod: the desktop menu respects `isHidden`, and `command.run` fires for `/model` and `/effort`. Tests: `claude plugin test mods/command-usage` (7 pass).
 - The visible commands keep the app's own order among themselves.
 
 ## 5. Add a new mod

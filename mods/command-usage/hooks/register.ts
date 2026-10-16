@@ -1,4 +1,4 @@
-import type { Register } from 'claude-code'
+import type { EngineInterface as Api, Register } from 'claude-code'
 
 // Counts each slash command the person runs ($.store, kept across sessions)
 // and, in the desktop app only, hides every command outside the top `keep`
@@ -10,6 +10,23 @@ type Counts = Record<string, number>
 
 function asCounts(value: unknown): Counts {
   return value && typeof value === 'object' ? { ...(value as Counts) } : {}
+}
+
+// Merges seed-counts.json (built from the CLI history by scripts/seed.js at
+// install) into the counts: the larger number wins, so runs the mod already
+// counted are not added twice. Returns the number of runs imported, or null.
+async function importSeed($: Api): Promise<number | null> {
+  let seed: Counts
+  try {
+    seed = asCounts(JSON.parse(String(await $.fs.read(`${$.plugin.root}/seed-counts.json`))).counts)
+  } catch {
+    return null
+  }
+  const counts = asCounts(await $.store.get('counts'))
+  for (const [name, n] of Object.entries(seed)) counts[name] = Math.max(counts[name] ?? 0, Number(n) || 0)
+  await $.store.set('counts', counts)
+  await $.store.set('seededAt', new Date().toISOString())
+  return Object.values(seed).reduce((a, b) => a + (Number(b) || 0), 0)
 }
 
 export const register: Register = (on, options) => {
@@ -40,10 +57,13 @@ export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: SELF,
-      description: 'Command use counts. Args: all (show/hide the full menu), reset',
+      description: 'Command use counts. Args: all (show/hide the full menu), import, reset',
     })
+    if ((await $.store.get('seededAt')) === undefined && (await importSeed($)) !== null) {
+      $.ui.invalidate('command.describe')
+    }
     return next(e)
-  })
+  }).catch(($, e, next) => next(e))
 
   // The desktop app can attach after the first listing: list again.
   on('session.attach', { surface: 'desktop' }, async ($, e, next) => {
@@ -65,6 +85,11 @@ export const register: Register = (on, options) => {
       await $.store.set('counts', {})
       $.ui.invalidate('command.describe')
       return { text: 'Counts cleared. The / menu shows every command until the warm-up ends.' }
+    }
+    if (arg === 'import') {
+      const n = await importSeed($)
+      $.ui.invalidate('command.describe')
+      return { text: n === null ? 'No seed-counts.json found. Run node install.js first.' : `Imported ${n} runs from the CLI history.` }
     }
     if (arg === 'all') {
       const showAll = (await $.store.get('showAll')) !== true

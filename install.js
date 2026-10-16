@@ -74,6 +74,17 @@ for (const name of mods) {
   });
   console.log(`Copied mod ${name} -> ${dest}`);
 
+  // A mod may ship scripts/seed.js to build its first data on this PC
+  // (command-usage: counts from the CLI history).
+  const seed = path.join(dest, "scripts", "seed.js");
+  if (fs.existsSync(seed)) {
+    try {
+      require("child_process").execFileSync(process.execPath, [seed, dest], { stdio: "inherit" });
+    } catch (err) {
+      console.log(`Seed for ${name} failed: ${err.message}`);
+    }
+  }
+
   const entry = `~/.claude/mods/${name}`;
   if (!dirs.includes(entry)) {
     dirs.push(entry);

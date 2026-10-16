@@ -59,7 +59,7 @@ Segments are joined with a dim ` | ` separator.
 - `node install.js` copies every mod to `~/.claude/mods/<name>` and adds it to `env.CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json`. New sessions load it.
 - Check a mod: `claude plugin validate mods/<name>`.
 - Mod 1: `usage-footer`, the usage line beside the model name in the desktop app (`c8 | 5h 18% 3h28m | w41/55`). Details and the desktop app limits: `docs/HANDOFF.md` sections 3-4.
-- Mod 2: `command-usage`, counts slash command runs and, in the desktop app only, hides rarely used commands from the `/` menu (a mod cannot reorder it; the CLI just counts). `/cmd-usage` shows counts, `all` toggles hiding, `reset` clears. Details: `docs/HANDOFF.md` section 3b. <!-- added: 2026-10-16 Friday 22:57:46 +05:30 -->
+- Mod 2: `command-usage`, counts slash command runs and, in the desktop app only, hides rarely used commands from the `/` menu (a mod cannot reorder it; the CLI just counts). `/cmd-usage` shows counts, `all` toggles hiding, `reset` clears. `install.js` seeds the counts from the last 90 days of CLI history (`scripts/seed.js`; updated: 2026-10-16 Friday 23:06:50 +05:30). Details: `docs/HANDOFF.md` section 3b. <!-- added: 2026-10-16 Friday 22:57:46 +05:30 -->
 
 ## Deep Context
 

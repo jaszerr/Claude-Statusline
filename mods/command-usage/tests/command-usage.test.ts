@@ -8,6 +8,10 @@ const engine = { plugin: 'engine', tier: 'core' } as const
 // a description comes back as given, the store is a Map.
 function bottom(on: On, surfaces: readonly ('terminal' | 'desktop')[] = ['desktop']) {
   on('session.surfaces', () => ({ value: surfaces }))
+  on('fs.read', ($, e) => {
+    if (!e.path.endsWith('seed-counts.json')) throw new Error('ENOENT')
+    return { value: JSON.stringify({ days: 90, counts: { 'end-session': 366, brain: 295, model: 1 } }) }
+  })
   const store = new Map<string, unknown>()
   on('store.get', ($, e) => ({ value: store.get(e.key) }))
   on('store.set', ($, e) => {
@@ -77,6 +81,18 @@ describe('command-usage', () => {
     const { text } = await run($, 'cmd-usage')
     expect(text).toContain('Counting only')
     expect(text).toContain('/model  2')
+  })
+
+  test('import merges the CLI history counts, larger number wins', small, async ($, on) => {
+    bottom(on)
+    for (const c of ['model', 'model', 'effort']) await run($, c)
+    const { text } = await run($, 'cmd-usage', 'import')
+    expect(text).toContain('Imported 662 runs')
+    const list = (await run($, 'cmd-usage')).text
+    expect(list).toContain('/end-session  366')
+    expect(list).toContain('/model  2')
+    expect(await hidden($, 'end-session')).toBe(false)
+    expect(await hidden($, 'model')).toBe(true)
   })
 
   test('/cmd-usage lists counts and reset clears them', small, async ($, on) => {
