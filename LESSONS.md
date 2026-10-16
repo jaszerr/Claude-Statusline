@@ -12,4 +12,4 @@ Rules for this file:
 - Do not copy rules that CLAUDE.md already states. This file is for new mistakes only.
 
 ## Lessons
-
+- 2026-10-16 Friday 23:32:19 +05:30 | Claimed a desktop mod worked because the user clicked an answer button I had written ("commands are gone"). Never treat a prewritten button answer as test proof: get a screenshot or a log before saying it works.

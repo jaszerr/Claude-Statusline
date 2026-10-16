@@ -99,16 +99,14 @@ The desktop app update moved the `SessionMode` slot. Tested with a probe mod and
 
 No mod slot sits beside the model name on 2.1.300. The line stays in `SessionMode`. Test note: a second mod's `SessionMode` hook never runs, because usage-footer draws the slot without calling `next(e)`.
 
-## 3b. Mod 2: command-usage (short / menu, desktop app only) <!-- added: 2026-10-16 Friday 22:57:46 +05:30 -->
+## 3b. Tried and removed: command-usage (desktop `/` menu) <!-- added: 2026-10-16 Friday 23:32:19 +05:30 -->
 
-- Goal: the `/` menu in the Windows desktop app shows the commands Jaspal uses most. The CLI menu has no problem, so the CLI is left alone. A mod CANNOT reorder the menu (the app sets the order; `command.describe` only changes the description or hides a command; `prompt.autocomplete` rows draw below the app's rows). So the mod hides the rarely used commands instead.
-- How: a `command.run` hook counts each run in `$.store` (`counts`, kept across sessions; CLI and desktop runs both count; plugin-made runs do not). A `command.describe` hook sets `isHidden` on every command outside the top `keep`, but only in the desktop app. Desktop test (updated: 2026-10-16 Friday 23:24:45 +05:30): the app builds the `/` list ONCE, at the first message, before `session.start` and before the `desktop` surface attaches, and it does not list again after `$.ui.invalidate`. So the mod detects the app by `$.env.get('CLAUDE_CODE_ENTRYPOINT') === 'claude-desktop'` (surfaces only as a fallback), and the first `command.describe` imports the seed itself. Before the first message, a new session shows the app's fixed list: the engine is not running yet, so no mod can change it.
-- A hidden command still runs when typed in full, but it does not show when you filter the menu either.
-- Options (`userConfig`): `keep` (15), `warmup` (25 total runs before anything is hidden), `alwaysShow` (comma list).
-- `/cmd-usage` lists the counts. `/cmd-usage all` turns hiding off or on. `/cmd-usage reset` clears the counts. `/cmd-usage import` merges the seed again.
-- Seed (updated: 2026-10-16 Friday 23:06:50 +05:30): `install.js` runs `scripts/seed.js` (any mod may ship one) after the copy. It counts slash commands in `~/.claude/history.jsonl` (CLI history, last 90 days) into `~/.claude/mods/command-usage/seed-counts.json`. The mod merges it once at its first session start (`seededAt` in `$.store`; larger number wins), so the short menu works from day one. The mod cannot read history.jsonl itself: it is over the 4 MiB `$.fs.read` limit. The seed file is per PC and git-ignored.
-- Tested on desktop 2.1.299 with a probe mod: the desktop menu respects `isHidden`, and `command.run` fires for `/model` and `/effort`. Tests: `claude plugin test mods/command-usage` (8 pass).
-- The visible commands keep the app's own order among themselves.
+- Goal: the desktop app's `/` menu shows the most used commands first. Result: NOT POSSIBLE with a mod. Do not try again.
+- A mod cannot reorder the menu. `command.describe` can only change a description or set `isHidden`, and `prompt.autocomplete` rows draw below the app's own rows.
+- The desktop app also IGNORES `isHidden`. Proof on 2.1.299 (2026-10-16): a debug log showed the mod answered `isHidden: true` for `schedule`, `btw`, `ultrareview`, `rewind`, `fork`, `sandbox` and about 500 more, at the first listing of a fresh session. A screenshot of that session still showed them all. A hot-loaded probe that hid six commands gave the same result.
+- Facts found on the way: the engine asks `command.describe` for every command (about 258, built-in, skills and plugins) at the first message. `CLAUDE_CODE_ENTRYPOINT=claude-desktop` detects the app at that moment; `$.session.surfaces()` may not list `desktop` yet. Before the first message, a new session shows the app's fixed list and no mod runs. `$.fs.read` cannot read `~/.claude/history.jsonl` (over 4 MiB).
+- The mod (counts in `$.store`, hide outside the top 15, seed from CLI history) is in git history: commits `c45e471`, `c8d6bac`, `3b0ef88`; removed after them.
+- Only fix: ask Anthropic (`/feedback` in the app) to sort the `/` menu by use.
 
 ## 5. Add a new mod
 

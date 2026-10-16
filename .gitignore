@@ -8,4 +8,3 @@ usage-fetch-gate.json
 mods/*/.claude-plugin/types/
 # Built by make-package.py
 dist/
-mods/*/seed-counts.json
