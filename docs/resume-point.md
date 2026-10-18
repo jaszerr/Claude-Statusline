@@ -1,5 +1,25 @@
 # Resume Point
 
+## 2026-10-18 Sunday 21:28:31 +0530 - Session close 2: Mac GitHub push fixed, 4 repos pushed (ad-hoc session)
+
+### What happened
+- The push from the Mac failed with 403 three times. Cause: gh held a fine-grained PAT (`github_pat_11BGMRTDA0...`) that could read but not write repo contents.
+- A first web login in the Terminal panel stalled: `gh auth login --web` waits for Enter before it polls. A login try in another CLI session only reported "already logged in" and changed nothing.
+- Fix: `gh auth login --hostname github.com --git-protocol https --web < /dev/null` in a Terminal panel tab. Jaspal typed the code at https://github.com/login/device. New token `gho_`, scopes gist, read:org, repo.
+- Pushed: Claude-Statusline (1668ba6, 5a17d6c), Machines-CLI (3 commits, to a1bae1d), WPO-CLI (1, 7a9f173), Jaspal-Ruby-Admin-CLI (7, 2a48a3c). All 4 repos are private and match their remotes.
+- Auto-memory: `mac-github-push-auth` (this project). Lessons log line added.
+
+### Next action
+- Mac: get a screenshot of the footer near the model name. It proves usage-footer draws in the Mac desktop app (2.1.299). Note if the line sits beside or under the model name.
+- Office PC: `git pull`, then `node install.js` (HANDOFF section 2).
+- Still open: CLI cache vs desktop footer numbers (another account's token?); computePace NaN guard in register.tsx.
+
+### Known gotchas
+- On a 403 push from the Mac, check the `Token:` line of `gh auth status` first: `github_pat_` = fine-grained (may lack write), `gho_` = OAuth login.
+- "Logged in" in `gh auth status` does not prove push access.
+- 8 files show as modified on the Mac only because of CRLF line endings. Before you edit one, check `git diff --ignore-cr-at-eol` is empty, then run `git checkout -- <file>`.
+
+
 ## 2026-10-18 Sunday 20:22:00 +0530 - Session close: usage-footer mod installed in the Mac desktop app (ad-hoc session)
 
 ### What happened
@@ -40,21 +60,3 @@
 ### Known gotchas
 - On the Mac, `git status` shows 9 modified files plus `.claude/`. The 9 files differ only by CRLF line endings (`git diff --ignore-cr-at-eol` is empty). Do not commit them as changes.
 - Compare the installed copy with `git show HEAD:statusline.js | diff - <(tr -d '\r' < ~/.claude/statusline.js)`; the blob id differs because the working copy is CRLF.
-
-## 2026-10-16 Friday 23:41:39 +05:30 - Session close: desktop `/` menu by use is not possible (command-usage mod built and removed)
-
-### What happened
-- Ask: the Windows desktop `/` menu should show the most used commands first.
-- Built `mods/command-usage` (count runs, hide all but the top 15 in the desktop app, seed from CLI history). Fixed the desktop check (`CLAUDE_CODE_ENTRYPOINT`).
-- A debug log plus screenshots proved the app ignores `isHidden`. A mod cannot reorder the menu either. Mod removed from repo, `~/.claude/mods`, `CLAUDE_CODE_PLUGIN_DIRS` and the store; install.js seed step reverted. Zip rebuilt.
-- Notes: CLAUDE.md (one-line rule), `docs/HANDOFF.md` section 3b, `docs/decisions.md`, wiki [[deployment]], `LESSONS.md` (1 lesson). Commits up to f7799fe, pushed.
-
-### Next action
-- Office PC: `git pull`, then `node install.js` (HANDOFF section 2). This also drops command-usage there if it was installed.
-- Optional: send `/feedback` in the desktop app asking to sort the `/` menu by use.
-- Still open: CLI cache vs desktop footer numbers (another account's token?); computePace NaN guard in register.tsx.
-
-### Known gotchas
-- Desktop `/` menu: the engine asks `command.describe` for every command at the first message, but the app ignores the answer. Before the first message no mod runs at all.
-- Never count a prewritten answer button as test proof; ask for a screenshot or read a log.
-- Auto mode gave no verdict on the Edit tool for several edits; Bash edits passed their own check. A mod in dev-mods loads only after the user answers the hot-reload question.

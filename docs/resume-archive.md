@@ -2,6 +2,24 @@
 
 Older entries moved here by /end-session, newest first.
 
+## 2026-10-16 Friday 23:41:39 +05:30 - Session close: desktop `/` menu by use is not possible (command-usage mod built and removed)
+
+### What happened
+- Ask: the Windows desktop `/` menu should show the most used commands first.
+- Built `mods/command-usage` (count runs, hide all but the top 15 in the desktop app, seed from CLI history). Fixed the desktop check (`CLAUDE_CODE_ENTRYPOINT`).
+- A debug log plus screenshots proved the app ignores `isHidden`. A mod cannot reorder the menu either. Mod removed from repo, `~/.claude/mods`, `CLAUDE_CODE_PLUGIN_DIRS` and the store; install.js seed step reverted. Zip rebuilt.
+- Notes: CLAUDE.md (one-line rule), `docs/HANDOFF.md` section 3b, `docs/decisions.md`, wiki [[deployment]], `LESSONS.md` (1 lesson). Commits up to f7799fe, pushed.
+
+### Next action
+- Office PC: `git pull`, then `node install.js` (HANDOFF section 2). This also drops command-usage there if it was installed.
+- Optional: send `/feedback` in the desktop app asking to sort the `/` menu by use.
+- Still open: CLI cache vs desktop footer numbers (another account's token?); computePace NaN guard in register.tsx.
+
+### Known gotchas
+- Desktop `/` menu: the engine asks `command.describe` for every command at the first message, but the app ignores the answer. Before the first message no mod runs at all.
+- Never count a prewritten answer button as test proof; ask for a screenshot or read a log.
+- Auto mode gave no verdict on the Edit tool for several edits; Bash edits passed their own check. A mod in dev-mods loads only after the user answers the hot-reload question.
+
 ## 2026-10-15 Thursday 11:56:34 +05:30 - Session close: desktop 2.1.300 moved the usage line (Windows)
 
 ### What happened
