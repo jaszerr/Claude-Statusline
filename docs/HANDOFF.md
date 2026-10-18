@@ -24,8 +24,8 @@ When the user opens this project and says "install the latest one with what we a
    - copies `statusline.js` to `~/.claude/statusline.js` and sets `statusLine` in `~/.claude/settings.json`
    - copies every `mods/<name>/` that has `.claude-plugin/plugin.json` to `~/.claude/mods/<name>/`
    - adds each `~/.claude/mods/<name>` to `env.CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json` (only if missing; other settings are kept)
-3. For each mod: `claude plugin validate ~/.claude/mods/<name>`. It must say "Validation passed".
-4. Check `claude --version` is 2.1.287 or later. If older, tell the user to update Claude Code.
+3. For each mod: `claude plugin validate ~/.claude/mods/<name>`. It must say "Validation passed". "Validation passed with warnings" is also OK when the only warning is the missing `author` in `plugin.json` (usage-footer, checked 2026-10-18 Sunday 20:22:00 +0530).
+4. Check `claude --version` is 2.1.287 or later. If older, tell the user to update Claude Code. The desktop app runs its own bundled copy, which can differ: in a desktop session, `ps -o command= -p $PPID` shows its path and version (Mac, 2026-10-18 Sunday 20:22:00 +0530: desktop 2.1.299, CLI 2.1.302).
 5. Tell the user: open a **new session** in the desktop app to load the mods. A first install of the status line needs a CLI restart.
 6. Ask the user for a screenshot of the prompt footer to confirm.
 

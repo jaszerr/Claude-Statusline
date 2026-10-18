@@ -2,6 +2,23 @@
 
 Older entries moved here by /end-session, newest first.
 
+## 2026-10-15 Thursday 11:56:34 +05:30 - Session close: desktop 2.1.300 moved the usage line (Windows)
+
+### What happened
+- After the app update (Claude Code 2.1.300), the usage-footer line sits on its own row under the model name.
+- Tested with a hot-reload probe mod and screenshots: no mod spot on the model row; absolute position ignored; short line still below; AbovePrompt is a gray card; PromptHint not drawn.
+- The user chose to leave it there. The lift test code was reverted; installed copy matches the repo. Probe mod deleted. Zip rebuilt.
+- Docs: `docs/HANDOFF.md` section 4 (2.1.300 table), `docs/decisions.md` (this date), wiki [[deployment]].
+
+### Next action
+- Office PC: `git pull`, then `node install.js` (HANDOFF section 2). No code change this session.
+- After each desktop app update, check if the slot moved back beside the model name.
+- Still open: CLI cache vs desktop footer numbers (another account's token?); computePace NaN guard in register.tsx.
+
+### Known gotchas
+- usage-footer is loaded through `CLAUDE_CODE_PLUGIN_DIRS`, so an edit needs a new session; hot reload covers only the session's dev-mods folder.
+- Mac desktop layout on 2.1.300 not tested.
+
 ## 2026-10-05 Monday 14:53:42 +05:30 - Session close: usage-footer truncation fix (Brain Mode session)
 
 ### What happened

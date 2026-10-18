@@ -1,5 +1,29 @@
 # Resume Point
 
+## 2026-10-18 Sunday 20:22:00 +0530 - Session close: usage-footer mod installed in the Mac desktop app (ad-hoc session)
+
+### What happened
+- Ask: use the mods on this Mac and update the Claude desktop app.
+- `git pull`: up to date. The local branch is 1 commit ahead (1668ba6, not pushed).
+- `node install.js`: statusline.js and usage-footer copied; `statusLine` and `CLAUDE_CODE_PLUGIN_DIRS` were already set.
+- `claude plugin validate ~/.claude/mods/usage-footer`: passed. The 1 warning is only "No author information" in plugin.json (harmless, left as is).
+- Installed copies match the repo (statusline.js diff 0 lines, mod folder the same).
+- The desktop app runs its own bundled Claude Code 2.1.299 (`~/Library/Application Support/Claude/claude-code/2.1.299/...`). The CLI is 2.1.302. Both are 2.1.287 or later.
+- This desktop session started with `CLAUDE_CODE_PLUGIN_DIRS=/Users/jsr/.claude/mods/usage-footer` and `CLAUDE_CODE_ENTRYPOINT=claude-desktop`. No log or screenshot proves the mod drew the line yet.
+- Zip rebuilt: `dist/claude-usage-line.zip` (18346 bytes).
+- Docs: `docs/HANDOFF.md` section 2 steps 3-4 (author warning, desktop version check), wiki [[deployment]].
+
+### Next action
+- Mac: get a screenshot of the footer near the model name. It proves usage-footer draws in the Mac desktop app (2.1.299). Note if the line sits beside or under the model name.
+- Push: Mac git creds got 403 on earlier pushes. Push 1668ba6 and this close from a machine with write access, or fix the Mac creds.
+- Office PC: `git pull`, then `node install.js` (HANDOFF section 2).
+- Still open: CLI cache vs desktop footer numbers (another account's token?); computePace NaN guard in register.tsx.
+
+### Known gotchas
+- `claude --version` shows the CLI version, not the desktop app's. In a desktop session, `ps -o command= -p $PPID` shows the bundled path with its version.
+- 9 files show as modified on the Mac only because of CRLF line endings. Before you edit one, check `git diff --ignore-cr-at-eol` is empty, then run `git checkout -- <file>`, so the commit does not carry a line-ending flip.
+
+
 ## 2026-10-18 Sunday 15:37:38 +0530 - Session close: latest status line installed on the Mac CLI (ad-hoc session)
 
 ### What happened
@@ -34,22 +58,3 @@
 - Desktop `/` menu: the engine asks `command.describe` for every command at the first message, but the app ignores the answer. Before the first message no mod runs at all.
 - Never count a prewritten answer button as test proof; ask for a screenshot or read a log.
 - Auto mode gave no verdict on the Edit tool for several edits; Bash edits passed their own check. A mod in dev-mods loads only after the user answers the hot-reload question.
-
-
-
-## 2026-10-15 Thursday 11:56:34 +05:30 - Session close: desktop 2.1.300 moved the usage line (Windows)
-
-### What happened
-- After the app update (Claude Code 2.1.300), the usage-footer line sits on its own row under the model name.
-- Tested with a hot-reload probe mod and screenshots: no mod spot on the model row; absolute position ignored; short line still below; AbovePrompt is a gray card; PromptHint not drawn.
-- The user chose to leave it there. The lift test code was reverted; installed copy matches the repo. Probe mod deleted. Zip rebuilt.
-- Docs: `docs/HANDOFF.md` section 4 (2.1.300 table), `docs/decisions.md` (this date), wiki [[deployment]].
-
-### Next action
-- Office PC: `git pull`, then `node install.js` (HANDOFF section 2). No code change this session.
-- After each desktop app update, check if the slot moved back beside the model name.
-- Still open: CLI cache vs desktop footer numbers (another account's token?); computePace NaN guard in register.tsx.
-
-### Known gotchas
-- usage-footer is loaded through `CLAUDE_CODE_PLUGIN_DIRS`, so an edit needs a new session; hot reload covers only the session's dev-mods folder.
-- Mac desktop layout on 2.1.300 not tested.
