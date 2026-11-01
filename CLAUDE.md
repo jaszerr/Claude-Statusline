@@ -58,7 +58,7 @@ Segments are joined with a dim ` | ` separator.
 - Each mod is `mods/<name>/` with `.claude-plugin/plugin.json`, `hooks/hooks.json`, `hooks/register.tsx`. Load the `plugin-authoring` skill before writing one.
 - `node install.js` copies every mod to `~/.claude/mods/<name>` and adds it to `env.CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json`. New sessions load it.
 - Check a mod: `claude plugin validate mods/<name>`.
-- Mod 1: `usage-footer`, the usage line beside the model name in the desktop app (`c8 | 5h 18% 3h28m | w41/55`). Details and the desktop app limits: `docs/HANDOFF.md` sections 3-4.
+- Mod 1: `usage-footer`, the usage line beside the model name in the desktop app (`c8 5h18% 3h28 w41/55`, compact since 2.1.316; updated: 2026-11-01 Sunday 19:14:13 +05:30; updated: 2026-11-01 Sunday 19:17:56 +05:30). Details and the desktop app limits: `docs/HANDOFF.md` sections 3-4.
 - Desktop `/` menu: a mod CANNOT shorten or reorder it. The app ignores `isHidden` from `command.describe` (proven with logs and screenshots on 2.1.299). The `command-usage` mod was built and removed. Details: `docs/HANDOFF.md` section 3b. <!-- added: 2026-10-16 Friday 23:32:19 +05:30 -->
 
 ## Deep Context

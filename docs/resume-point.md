@@ -1,5 +1,27 @@
 # Resume Point
 
+## 2026-11-01 Sunday 19:24:26 +05:30 - Session close: usage-footer line fixed for the 2.1.316 desktop cut (ad-hoc session, Brain Mode)
+
+### What happened
+- Problem: in the Windows desktop app (Claude Code 2.1.316) the usage-footer line beside the model name was sometimes cut with "..." (`c12 | 5h 19% 2h46m | w48/...`).
+- Cause: the app cuts the `SessionMode` slot at a pixel cap (about 24 characters). The old line was 23-28 characters, so it fit only when the numbers were short. The mod has no truncation code and cannot read the slot width.
+- Options: A compact line (chosen), B short line plus hover reveal (not proven in this slot), C `truncate-middle` (still cuts). Detail: `docs/decisions.md`.
+- Ruler probe in the installed copy only: the app showed `c99 ~5h99% 4:59 w99/99 1...`, so the 22-character worst case fits.
+- Shipped in `mods/usage-footer/hooks/register.tsx`: one no-break space between parts, countdown HhMM, `MAX_LINE = 22`. Example: `c13 5h2% 4h53 w49/73`.
+- A screenshot proved the H:MM form (`c13 5h2% 4:53 w49/73`) shows in full. Then the countdown changed to `4h53`, because `4:53` read like a clock time.
+- Installed on this PC (`node install.js`), validated, `dist/claude-usage-line.zip` rebuilt. Docs: HANDOFF.md sections 3, 4, 6; CLAUDE.md Mod 1 line; decisions.md entry; LESSONS.md line.
+
+### Next action
+- This PC: open a new desktop session and screenshot the footer. Confirm the `4h53` form shows in full with no "..." (not seen yet; "h" is a little wider than ":").
+- Office PC and Mac: `git pull`, then `node install.js` (HANDOFF section 2).
+- Mac: get a screenshot of the footer near the model name (carry-over; proves usage-footer draws in the Mac app).
+- Still open: CLI cache vs desktop footer numbers (another account's token?); computePace NaN guard in register.tsx.
+
+### Known gotchas
+- The desktop footer layout changes between app versions: 2.1.288 beside the model (about 30 characters), 2.1.300 on its own row, 2.1.316 beside the model (about 24 characters). After an app update that shows "...", rerun the ruler probe (HANDOFF section 4).
+- Values of 100% (`5h100%`, `w100/100`) make the line longer than 22 characters, so it can still cut at the hard limits.
+- `diff -rq` against the installed mod lists `tsconfig.json` and `.claude-plugin/types`. The engine makes them; they are not code.
+
 ## 2026-10-18 Sunday 21:28:31 +0530 - Session close 2: Mac GitHub push fixed, 4 repos pushed (ad-hoc session)
 
 ### What happened
@@ -43,20 +65,3 @@
 - `claude --version` shows the CLI version, not the desktop app's. In a desktop session, `ps -o command= -p $PPID` shows the bundled path with its version.
 - 9 files show as modified on the Mac only because of CRLF line endings. Before you edit one, check `git diff --ignore-cr-at-eol` is empty, then run `git checkout -- <file>`, so the commit does not carry a line-ending flip.
 
-
-## 2026-10-18 Sunday 15:37:38 +0530 - Session close: latest status line installed on the Mac CLI (ad-hoc session)
-
-### What happened
-- Ask: install the latest status line in the Mac Claude Code CLI.
-- Repo already matched `origin/master` (c8fdba7). Ran `node install.js`: `~/.claude/statusline.js` updated, `statusLine` setting already correct.
-- Installer also copied `usage-footer` to `~/.claude/mods/` and added it to `CLAUDE_CODE_PLUGIN_DIRS`. `claude plugin validate`: passed with 1 warning (not read). Claude Code 2.1.302.
-- Test render with sample stdin showed all 6 segments (Context, Weekly, 5hr, Fable, Pace, Model+Effort).
-
-### Next action
-- Mac: open a new session to load `usage-footer`; check the 1 validate warning.
-- Office PC: `git pull`, then `node install.js` (HANDOFF section 2).
-- Still open: CLI cache vs desktop footer numbers (another account's token?); computePace NaN guard in register.tsx.
-
-### Known gotchas
-- On the Mac, `git status` shows 9 modified files plus `.claude/`. The 9 files differ only by CRLF line endings (`git diff --ignore-cr-at-eol` is empty). Do not commit them as changes.
-- Compare the installed copy with `git show HEAD:statusline.js | diff - <(tr -d '\r' < ~/.claude/statusline.js)`; the blob id differs because the working copy is CRLF.

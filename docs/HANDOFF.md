@@ -51,13 +51,15 @@ macOS notes: `install.command` adds `/opt/homebrew/bin`, `/usr/local/bin`, and n
 Shows usage beside the model name in the Claude Code desktop app (Windows; macOS uses the same `desktop` surface):
 
 ```
-+ mic v  Auto              c8 | 5h 18% 3h28m | w41/55     Opus 5.5  High  o
++ mic v  Auto              c8 5h18% 3h28 w41/55     Opus 5.5  High  o
 ```
+
+Format updated 2026-11-01 Sunday 19:14:13 +05:30 (was `c8 | 5h 18% 3h28m | w41/55`): one no-break space between parts, no space after `5h`, countdown as HhMM (`3h28`, `0h05`; it was H:MM until 2026-11-01 Sunday 19:17:56 +05:30, because `4:53` read like a clock time). Worst case is 22 characters (`c99 ~5h99% 4h59 w99/99`). Reason: section 4, "Update: Claude Code 2.1.316".
 
 | Part | Meaning | Color rule |
 |---|---|---|
 | `c8` | context window 8% used | green under 50, yellow 50-74, red 75+ |
-| `5h 18% 3h28m` | 5-hour session 18% used, resets in 3h 28m | green under 50, yellow 50-74, red 75+ |
+| `5h18% 3h28` | 5-hour session 18% used, resets in 3h 28m (HhMM) | green under 50, yellow 50-74, red 75+ |
 | `w41/55` | week 41% used / pace 55% | green at/under pace, yellow up to pace +10, red beyond |
 | `\|` | separator | gray |
 | `~` before `5h` (or before `w` when 5h is missing) | usage data older than 10 minutes | |
@@ -83,7 +85,7 @@ How it works:
 | `AbovePrompt` (band above the input) | Works at full width, but the app draws a gray card around it. A mod cannot remove the card. |
 | `PromptHint` (line under the prompt) | Not drawn by the desktop app at all. |
 
-Keep the usage line at 28 characters or fewer. The Fable weekly segment was dropped to fit. Stale data adds one `~`. Mode labels show only when the line stays at 28 or fewer.
+Keep the usage line at 28 characters or fewer (2.1.288; since 2.1.316 the limit is 22, see the 2.1.316 update below). The Fable weekly segment was dropped to fit. Stale data adds one `~`. Mode labels show only when the line stays at 28 or fewer.
 
 ### Update: Claude Code 2.1.300 (2026-10-15 Thursday 11:50:38 +05:30)
 
@@ -98,6 +100,15 @@ The desktop app update moved the `SessionMode` slot. Tested with a probe mod and
 | `PromptHint` | Same as 2.1.288: not drawn. |
 
 No mod slot sits beside the model name on 2.1.300. The line stays in `SessionMode`. Test note: a second mod's `SessionMode` hook never runs, because usage-footer draws the slot without calling `next(e)`.
+
+### Update: Claude Code 2.1.316 (2026-11-01 Sunday 19:14:13 +05:30)
+
+- Cut: the `SessionMode` slot is beside the model name again, and the app cuts it with "...". The old 27-character line `c12 | 5h 19% 2h46m | w48/NN` showed only `c12 | 5h 19% 2h46m | w48/...` (effort label "Extra"). The line fit or got cut depending on its length that minute (digits, countdown, stale `~`).
+- Cause: the app caps the slot in pixels (proportional font), not in characters. The old 28-character budget was too large.
+- Ruler method: a temporary probe in the installed copy drew the worst-case compact line plus a digit ruler: `c99 ~5h99% 4:59 w99/99 1234567890123456789012345` (no-break spaces between parts).
+- Result (effort label "Medium"): the app showed `c99 ~5h99% 4:59 w99/99 1...`. The full 22-character worst case shows, and the app cuts at about the 24th character.
+- Fix: the compact format in section 3 (`c12 5h19% 2h46 w48/55`) with `MAX_LINE = 22`. The probe was removed by `node install.js`. The user confirmed the shipped line on screen (`c13 5h2% 4:53 w49/73`, no "...").
+- Update 2026-11-01 Sunday 19:17:56 +05:30: the countdown changed from H:MM to HhMM (`4h53`), because `4:53` read like a clock time. Same length; "h" is a little wider than ":", inside the measured margin of about 2 characters. The ruler lines above show the probe as it was, with the colon.
 
 ## 3b. Tried and removed: command-usage (desktop `/` menu) <!-- added: 2026-10-16 Friday 23:32:19 +05:30 -->
 
@@ -120,9 +131,11 @@ No mod slot sits beside the model name on 2.1.300. The line stays in `SessionMod
 | Problem | Fix |
 |---|---|
 | Line does not show | Open a new session. Check `env.CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json`. Run the validator. |
-| Line ends with "..." | The text is too long for the slot. Shorten a segment. |
+| Line ends with "..." | The text is too long for the slot (2.1.316: a pixel cap of about 24 characters). Measure with the ruler probe (section 4, 2.1.316 update), then shorten the line and set `MAX_LINE`. (updated 2026-11-01 Sunday 19:24:26 +05:30) |
 | Line shows `~5h` | The usage API was not reached for 10+ minutes (rate limit or offline). It recovers by itself. |
 | Settings broke after install | `install.js` only adds `statusLine` and `env.CLAUDE_CODE_PLUGIN_DIRS`; compare with a backup. |
+| `diff -rq` lists `tsconfig.json` or `.claude-plugin/types` only in the installed mod | The engine makes them when a session loads the mod. They are not code; only "differ" lines matter. (added 2026-11-01 Sunday 19:24:26 +05:30) |
+| Test a mod's line without the app | Copy the mod to a scratch folder, add `hooks/<name>.test.tsx`, and run `claude plugin test <folder>` from the parent folder. (added 2026-11-01 Sunday 19:24:26 +05:30) |
 
 ## 7. Remove a mod
 

@@ -2,6 +2,23 @@
 
 Older entries moved here by /end-session, newest first.
 
+## 2026-10-18 Sunday 15:37:38 +0530 - Session close: latest status line installed on the Mac CLI (ad-hoc session)
+
+### What happened
+- Ask: install the latest status line in the Mac Claude Code CLI.
+- Repo already matched `origin/master` (c8fdba7). Ran `node install.js`: `~/.claude/statusline.js` updated, `statusLine` setting already correct.
+- Installer also copied `usage-footer` to `~/.claude/mods/` and added it to `CLAUDE_CODE_PLUGIN_DIRS`. `claude plugin validate`: passed with 1 warning (not read). Claude Code 2.1.302.
+- Test render with sample stdin showed all 6 segments (Context, Weekly, 5hr, Fable, Pace, Model+Effort).
+
+### Next action
+- Mac: open a new session to load `usage-footer`; check the 1 validate warning.
+- Office PC: `git pull`, then `node install.js` (HANDOFF section 2).
+- Still open: CLI cache vs desktop footer numbers (another account's token?); computePace NaN guard in register.tsx.
+
+### Known gotchas
+- On the Mac, `git status` shows 9 modified files plus `.claude/`. The 9 files differ only by CRLF line endings (`git diff --ignore-cr-at-eol` is empty). Do not commit them as changes.
+- Compare the installed copy with `git show HEAD:statusline.js | diff - <(tr -d '\r' < ~/.claude/statusline.js)`; the blob id differs because the working copy is CRLF.
+
 ## 2026-10-16 Friday 23:41:39 +05:30 - Session close: desktop `/` menu by use is not possible (command-usage mod built and removed)
 
 ### What happened

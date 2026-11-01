@@ -13,3 +13,4 @@ Rules for this file:
 
 ## Lessons
 - 2026-10-16 Friday 23:32:19 +05:30 | Claimed a desktop mod worked because the user clicked an answer button I had written ("commands are gone"). Never treat a prewritten button answer as test proof: get a screenshot or a log before saying it works.
+- 2026-11-01 Sunday 19:24:26 +05:30 | Shortened a time-left value to H:MM (`4:53`) to save space; it read like a clock time. Keep a unit letter on durations (`4h53`).

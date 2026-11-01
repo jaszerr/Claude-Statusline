@@ -1,5 +1,13 @@
 # Decisions Log
 
+## 2026-11-01 Sunday 19:14:13 +05:30 - usage-footer compact line for the 2.1.316 desktop cut (source: Claude-Statusline, helper)
+
+**Compact format, not hover or truncate-middle.** On 2.1.316 the `SessionMode` slot is beside the model name again and the app cuts it with "..." at a pixel cap. The old 27-character line was sometimes cut, depending on its length that minute. New line: `c12 5h19% 2:46 w48/55` (one no-break space between parts, countdown as H:MM), `MAX_LINE = 22`. Rejected: hover reveal of the full line (not proven to work in this slot), and `wrap="truncate-middle"` (still cuts).
+
+**Cap measured with a ruler probe.** A temporary probe in the installed copy drew `c99 ~5h99% 4:59 w99/99 1234567890123456789012345`. The app showed `c99 ~5h99% 4:59 w99/99 1...` (effort label "Medium"): the 22-character worst case fits, and the cut is at about the 24th character. `node install.js` replaced the probe. Detail: `docs/HANDOFF.md` section 4, "Update: Claude Code 2.1.316".
+
+updated_at 2026-11-01 Sunday 19:17:56 +05:30: the user confirmed the line on screen (`c13 5h2% 4:53 w49/73`, no "..."). The countdown changed from H:MM to HhMM (`4h53`), because `4:53` read like a clock time. Same 22-character worst case (`c99 ~5h99% 4h59 w99/99`); `MAX_LINE` stays 22.
+
 ## 2026-10-16 Friday 23:41:39 +05:30 - Desktop `/` menu: most-used commands first is NOT possible with a mod; command-usage mod built and removed
 
 **Ask:** the `/` menu in the Windows desktop app should list the most used commands from top to bottom. The CLI menu is fine.

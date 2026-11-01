@@ -18,7 +18,7 @@ const ERROR_BACKOFF = 2 * 60 * 1000
 const STALE_AFTER = 10 * 60 * 1000
 const HOUR = 3600000
 const NBSP = String.fromCharCode(160) // HTML collapses repeated plain spaces
-const SEP = `${NBSP}|${NBSP}`
+const SEP = NBSP // one no-break space between parts (was " | ")
 
 const GREEN = 'green'
 const YELLOW = 'yellow'
@@ -44,7 +44,8 @@ function computePace(week: Window | null, now: number) {
 function countdown(iso: string, now: number) {
   const mins = Math.floor((resetMs(iso) - now) / 60000)
   if (!Number.isFinite(mins) || mins <= 0) return null // unparsable or past resets_at
-  return `${Math.floor(mins / 60)}h${String(mins % 60).padStart(2, '0')}m`
+  // HhMM, e.g. 2h46 (a colon read like a clock time)
+  return `${Math.floor(mins / 60)}h${String(mins % 60).padStart(2, '0')}`
 }
 
 const toWindow = (w: any): Window | null =>
@@ -97,12 +98,18 @@ async function fetchUsage($: any) {
 }
 
 // Draws the compact usage line for the footer slot beside the model name.
-// That slot caps at about 30 characters, so labels are one letter:
-// c8 | 5h 18% 3h28m | w41/55  (w = week used / pace).
+// Claude Code 2.1.316: the slot sits beside the model name again and the app
+// cuts it with "..." at about 25 characters. The cap is in pixels (proportional
+// font), not characters, so the line is compact with a worst-case budget:
+// c12 5h19% 2h46 w48/55  (5h = session used + HhMM to reset, w = week used / pace).
 // Stale data (10+ min old) gets ONE `~`, before `5h` (or before `w` when the
-// 5h part is missing): c42 | ~5h 55% 1h01m | w51/83.
-// The engine's mode labels are added only when the whole line stays <= 28.
-const MAX_LINE = 28
+// 5h part is missing): c42 ~5h55% 1h01 w51/83.
+// The engine's mode labels are added only when the whole line stays <= MAX_LINE.
+// Measured 2026-11-01 (2.1.316, ruler probe): the 22-char worst case
+// (then c99 ~5h99% 4:59 w99/99) shows in full; the app cuts at about the 24th
+// char, a margin of about 2 chars. The worst case is now c99 ~5h99% 4h59 w99/99,
+// still 22 chars; "h" is a little wider than ":", well inside that margin.
+const MAX_LINE = 22
 async function drawLine($: any, e: any) {
   const { Box, Text } = $.ui.resolve(e)
   await read($, tick) // redraw every minute so countdown and pace move
@@ -118,7 +125,7 @@ async function drawLine($: any, e: any) {
   if (u?.fiveHour) {
     const pct = Math.round(u.fiveHour.pct)
     const left = u.fiveHour.resetsAt ? countdown(u.fiveHour.resetsAt, now) : null
-    parts.push({ text: `${stale}5h ${pct}%${left ? ` ${left}` : ''}`, color: fixedColor(pct) })
+    parts.push({ text: `${stale}5h${pct}%${left ? `${NBSP}${left}` : ''}`, color: fixedColor(pct) })
   }
   if (u?.week) {
     const pct = Math.round(u.week.pct)
